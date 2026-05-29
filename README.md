@@ -42,10 +42,6 @@ gem install supabase-rails
 ## Basic Usage
 
 ```ruby
-# config/application.rb
-require "supabase/rails"
-config.middleware.use Supabase::Rails::Middleware, auth: :user
-
 # app/controllers/application_controller.rb
 class ApplicationController < ActionController::API
   include Supabase::Rails::Controller
@@ -62,7 +58,7 @@ class FavoriteGamesController < ApplicationController
 end
 ```
 
-One mixin, one `before_action`: auth is validated, clients are ready, CORS is handled. Your action only runs on successful auth.
+That's it. In a Rails app the gem's Railtie auto-inserts the middleware on boot with `auth: :user` and default CORS — no `config.middleware.use` needed. One mixin, one `before_action`: auth is validated, clients are ready, CORS is handled. Your action only runs on successful auth.
 
 ## Context Object
 
@@ -151,28 +147,45 @@ Plural forms take priority when both are set. For other environments, pass overr
 
 ## Configuration
 
+In a Rails app, configure via `config.supabase.*` in `config/application.rb` or an environment file:
+
 ```ruby
-config.middleware.use Supabase::Rails::Middleware,
-  auth: :user,                # who can call this app
-  cors: false,                # disable CORS (default: supabase-js CORS headers)
-  env: { url: "..." },        # env overrides (optional)
-  supabase_options: {}        # forwarded to Supabase::Client.new
+config.supabase.auth = :user                # default auth mode for the whole app
+config.supabase.cors = false                # disable built-in CORS (e.g. when using rack-cors)
+config.supabase.env = { url: "..." }        # env overrides (optional)
+config.supabase.supabase_options = {}       # forwarded to Supabase::Client.new
 ```
 
-`cors` defaults to the standard supabase-js CORS headers. Pass a `Hash` to set custom headers, or `false` to disable CORS handling (e.g. when using `rack-cors` or Rails' own CORS stack).
+Defaults: `auth: :user`, CORS enabled with supabase-js-compatible headers, env resolved from `SUPABASE_*` variables.
+
+For custom CORS headers, pass a `Hash`:
 
 ```ruby
-config.middleware.use Supabase::Rails::Middleware,
-  auth: :user,
-  cors: {
-    "Access-Control-Allow-Origin"  => "https://myapp.com",
-    "Access-Control-Allow-Headers" => "authorization, content-type"
-  }
+config.supabase.cors = {
+  "Access-Control-Allow-Origin"  => "https://myapp.com",
+  "Access-Control-Allow-Headers" => "authorization, content-type"
+}
 ```
 
 Named-key validation: `auth: "publishable:web_app"` or `auth: "secret:cron"` validates against a specific named key in `SUPABASE_PUBLISHABLE_KEYS` / `SUPABASE_SECRET_KEYS`.
 
 Array syntax (`auth: [:user, :secret]`) accepts multiple methods — first match wins. An absent credential falls through to the next mode; a present-but-invalid JWT rejects the request (no silent downgrade).
+
+### Manual middleware insertion
+
+The Railtie auto-inserts the middleware at the end of the stack. To position it precisely, opt out of auto-insertion and insert it yourself:
+
+```ruby
+config.supabase.insert_middleware = false
+config.middleware.insert_before Rack::Runtime, Supabase::Rails::Middleware, auth: :user
+```
+
+Or use the gem in a plain Rack app (no Rails, no Railtie):
+
+```ruby
+require "supabase/rails"
+use Supabase::Rails::Middleware, auth: :user
+```
 
 ## Status
 
