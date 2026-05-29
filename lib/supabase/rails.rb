@@ -17,3 +17,4 @@ end
 
 require_relative "rails/middleware"
 require_relative "rails/controller"
+require_relative "rails/railtie" if defined?(::Rails::Railtie)
