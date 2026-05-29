@@ -75,6 +75,11 @@ RSpec.describe "Thread safety (NFR-1)" do
       expect(Supabase::Server::JWT.instance_variable_get(:@cache_mutex)).to be_a(Mutex)
       expect(Supabase::Server::JWT.instance_variable_get(:@cache)).to be_a(Hash)
     end
+
+    it "Supabase::Server::Logging owns only the logger mutex + logger ref" do
+      expect(Supabase::Server::Logging.instance_variables).to contain_exactly(:@mutex, :@logger)
+      expect(Supabase::Server::Logging.instance_variable_get(:@mutex)).to be_a(Mutex)
+    end
   end
 
   describe "JWKS cache" do

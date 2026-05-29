@@ -3,6 +3,7 @@
 require_relative "core"
 require_relative "env"
 require_relative "errors"
+require_relative "logging"
 
 module Supabase
   module Server
@@ -54,6 +55,7 @@ module Supabase
         begin
           Core.verify_credentials(credentials, auth: auth, env: env)
         rescue AuthError => e
+          Logging.log(:warn, "[#{e.code}] #{e.message}")
           return Result.failure(e)
         end
 
@@ -86,9 +88,13 @@ module Supabase
         )
       )
     rescue EnvError => e
-      Result.failure(AuthError.new(e.message, e.code, 500))
+      wrapped = AuthError.new(e.message, e.code, 500)
+      Logging.log(:error, "[#{wrapped.code}] #{wrapped.message}")
+      Result.failure(wrapped)
     rescue StandardError
-      Result.failure(AuthError.create_supabase_client_error)
+      wrapped = AuthError.create_supabase_client_error
+      Logging.log(:error, "[#{wrapped.code}] #{wrapped.message}")
+      Result.failure(wrapped)
     end
 
     def self.extract_headers(request)
