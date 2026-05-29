@@ -12,7 +12,7 @@
 
 `server-rb` is a Ruby gem that brings the server-side primitives of [`@supabase/server`](../server-ts) (TypeScript) to Ruby web applications. It handles environment resolution, credential extraction, JWT verification, and per-request Supabase client creation — so application code can focus on business logic instead of auth boilerplate.
 
-It ships **framework-agnostic core primitives** plus **first-class adapters for Rails and Hanami**, mirroring how `server-ts` ships adapters for Hono, H3, Elysia, and NestJS.
+It ships **framework-agnostic core primitives** plus a **first-class adapter for Rails**, mirroring how `server-ts` ships adapters for Hono, H3, Elysia, and NestJS.
 
 The Ruby client used internally is [`supabase-rb`](../supabase-rb).
 
@@ -24,14 +24,14 @@ The Ruby client used internally is [`supabase-rb`](../supabase-rb).
 
 - **Feature parity** with `server-ts` v1.1.0 public API (auth modes, env var contract, error semantics, context shape).
 - **Idiomatic Ruby** API — `keyword args`, `Result`-like return tuples, `raise` for unrecoverable errors, lowercase snake_case throughout.
-- **Two framework adapters** at launch: Rails (≥ 7.1) and Hanami (≥ 2.1).
+- **One framework adapter** at launch: Rails (≥ 7.1).
 - **Thread-safe** — works under Puma (multi-threaded) without per-thread setup.
 - **No global state** — context lives in the Rack request, not class variables.
 - **Single gem with optional requires** for adapters, mirroring `supabase-rb`'s monorepo layout.
 
 ### Non-goals
 
-- Sinatra, Roda, Grape, or other Rack frameworks at launch (community adapters welcome later).
+- Sinatra, Roda, Grape, Hanami, or other Rack frameworks at launch (community adapters welcome later).
 - Async I/O (`async-http`) at launch. Sync-only; `supabase-rb` is sync.
 - Replacing `supabase-rb` — `server-rb` consumes it, never reimplements it.
 - A CLI, generators, or scaffolding tools.
@@ -42,7 +42,7 @@ The Ruby client used internally is [`supabase-rb`](../supabase-rb).
 ## 3. Target users
 
 - Ruby teams running a Supabase project who need a server with RLS-aware queries.
-- Mobile/SPA backends written in Rails or Hanami that already use Supabase auth on the client and need server-side verification of the same JWTs.
+- Mobile/SPA backends written in Rails that already use Supabase auth on the client and need server-side verification of the same JWTs.
 - Service-to-service callers that authenticate with a secret API key.
 
 ---
@@ -53,11 +53,10 @@ The Ruby client used internally is [`supabase-rb`](../supabase-rb).
 |---|---|---|---|
 | US-1 | Rails dev | add `before_action :verify_supabase_auth` to a controller | I can require a valid Supabase JWT on a route |
 | US-2 | Rails dev | access `supabase_context.supabase` in any controller action | I can run RLS-aware queries scoped to the caller |
-| US-3 | Hanami dev | mount one Rack middleware | every action has access to a verified context |
-| US-4 | Either | configure `SUPABASE_URL` / keys / JWKS via env vars | I don't have to wire anything in code |
-| US-5 | Either | switch between `:user`, `:publishable`, `:secret`, `:none` auth modes per route | I can mix end-user and service auth without duplicating code |
-| US-6 | Either | reach `supabase_admin` for privileged operations | I can bypass RLS in trusted code paths |
-| US-7 | Platform team | run multiple named publishable / secret keys | I can support mobile + web + server with distinct keys |
+| US-3 | Rails dev | configure `SUPABASE_URL` / keys / JWKS via env vars | I don't have to wire anything in code |
+| US-4 | Rails dev | switch between `:user`, `:publishable`, `:secret`, `:none` auth modes per route | I can mix end-user and service auth without duplicating code |
+| US-5 | Rails dev | reach `supabase_admin` for privileged operations | I can bypass RLS in trusted code paths |
+| US-6 | Platform team | run multiple named publishable / secret keys | I can support mobile + web + server with distinct keys |
 
 ---
 
@@ -65,7 +64,7 @@ The Ruby client used internally is [`supabase-rb`](../supabase-rb).
 
 ### 5.1 Core module (`Supabase::Server`)
 
-Pure-Ruby, framework-agnostic. All requirements below must be satisfied without depending on Rack, Rails, or Hanami.
+Pure-Ruby, framework-agnostic. All requirements below must be satisfied without depending on Rack or Rails.
 
 #### FR-1: Environment resolution (`Supabase::Server::Env.resolve`)
 
@@ -150,7 +149,7 @@ ctx.supabase.from(:games).select.execute
 #### FR-9: CORS (`Supabase::Server::CORS`)
 
 - Default: emits `supabase-js`-equivalent CORS headers (`Access-Control-Allow-Origin: *`, etc.).
-- Disabled when adapter opts out (Rails/Hanami pass `cors: false` — frameworks have their own CORS stacks).
+- Disabled when adapter opts out (Rails passes `cors: false` — the framework has its own CORS stack).
 - Custom hash supported.
 
 ### 5.2 Rails adapter (`Supabase::Server::Rails`)
@@ -183,39 +182,6 @@ end
 - `supabase_context` helper exposes the context.
 - `verify_supabase_auth` raises if absent → handled by Rails into 401.
 - Per-route override: `before_action -> { verify_supabase_auth(auth: :secret) }`.
-
-### 5.3 Hanami adapter (`Supabase::Server::Hanami`)
-
-#### FR-12: Rack middleware
-
-```ruby
-# config/app.rb
-module MyApp
-  class App < Hanami::App
-    config.middleware.use Supabase::Server::Hanami::Middleware, auth: :user
-  end
-end
-```
-
-Same Rack contract as Rails: resolves context, stashes in `env`, errors out on failure.
-
-#### FR-13: Action mixin
-
-```ruby
-module MyApp::Actions::Games
-  class Index < MyApp::Action
-    include Supabase::Server::Hanami::Action
-
-    def handle(request, response)
-      games = supabase_context.supabase.from(:games).select.execute
-      response.body = JSON.generate(games)
-    end
-  end
-end
-```
-
-- `supabase_context` reads from `request.env["supabase.context"]`.
-- Optional: register a `dry-system` provider so actions can declare `include Deps["supabase_context"]`.
 
 ---
 
@@ -295,20 +261,6 @@ class ApplicationController < ActionController::API
 end
 ```
 
-### 7.3 Hanami
-
-```ruby
-require "supabase/server/hanami"
-
-# Middleware
-config.middleware.use Supabase::Server::Hanami::Middleware, auth: :user
-
-# Action mixin
-class Games::Index < MyApp::Action
-  include Supabase::Server::Hanami::Action
-end
-```
-
 ---
 
 ## 8. Dependencies
@@ -324,12 +276,11 @@ end
 ### Adapter peer-deps
 
 - Rails adapter: `rails ≥ 7.1` (or `actionpack ≥ 7.1` + `railties ≥ 7.1`).
-- Hanami adapter: `hanami ≥ 2.1`.
-- Both declared as **soft** deps (`add_development_dependency` only); the require fails fast with a clear message if the framework isn't present.
+- Declared as a **soft** dep (`add_development_dependency` only); the require fails fast with a clear message if the framework isn't present.
 
 ### Dev / test
 
-- `rspec`, `simplecov`, `rack-test`, `rails`, `hanami` — see `Gemfile`.
+- `rspec`, `simplecov`, `rack-test`, `rails` — see `Gemfile`.
 - `webmock` — stub remote JWKS fetches.
 - `vcr` (optional) — record real Supabase responses for integration tests.
 
@@ -359,13 +310,9 @@ server-rb/
 │       ├── errors.rb                   # FR-8
 │       ├── cors.rb                     # FR-9
 │       ├── rails.rb                    # `require "supabase/server/rails"` → loads adapter
-│       ├── rails/
-│       │   ├── middleware.rb           # FR-10
-│       │   └── controller.rb           # FR-11
-│       ├── hanami.rb                   # `require "supabase/server/hanami"`
-│       └── hanami/
-│           ├── middleware.rb           # FR-12
-│           └── action.rb               # FR-13
+│       └── rails/
+│           ├── middleware.rb           # FR-10
+│           └── controller.rb           # FR-11
 ├── spec/
 │   ├── spec_helper.rb
 │   ├── supabase/server/
@@ -377,15 +324,13 @@ server-rb/
 │   │   ├── errors_spec.rb
 │   │   └── cors_spec.rb
 │   ├── adapters/
-│   │   ├── rails_spec.rb               # integration: dummy Rails app
-│   │   └── hanami_spec.rb              # integration: dummy Hanami app
+│   │   └── rails_spec.rb               # integration: dummy Rails app
 │   └── fixtures/
 │       ├── jwks.json
 │       └── tokens/                     # pre-signed JWTs
 └── docs/
     ├── adapters/
-    │   ├── rails.md
-    │   └── hanami.md
+    │   └── rails.md
     └── migration-from-server-ts.md
 ```
 
@@ -400,7 +345,6 @@ Mirror `server-ts/src/**/*.test.ts` file-by-file. Every primitive (env, extract,
 ### 10.2 Adapter integration tests
 
 - **Rails:** boot a minimal `rails new`-style app inside `spec/adapters/rails_spec.rb`, mount middleware, hit it with `rack-test`. Cover: all four auth modes, named keys, error responses, per-route override via `before_action`.
-- **Hanami:** same approach with a `Hanami::App` subclass.
 
 ### 10.3 Coverage targets
 
@@ -418,7 +362,7 @@ A `spec/conformance/` suite mirrors the auth-mode matrix tested by `server-ts/sr
 
 ### Phase 0 — Setup (½ week)
 
-- Gemspec, Gemfile, RSpec, SimpleCov, RuboCop, CI (GitHub Actions matrix on Ruby 3.0/3.2/3.3, Rails 7.1/7.2, Hanami 2.1/2.2).
+- Gemspec, Gemfile, RSpec, SimpleCov, RuboCop, CI (GitHub Actions matrix on Ruby 3.0/3.2/3.3, Rails 7.1/7.2).
 - README skeleton, LICENSE (MIT, matches `server-ts`).
 
 ### Phase 1 — Core (1 week)
@@ -437,24 +381,19 @@ A `spec/conformance/` suite mirrors the auth-mode matrix tested by `server-ts/sr
 - Middleware + controller concern.
 - Dummy Rails app integration tests.
 
-### Phase 3 — Hanami adapter (½ week)
-
-- Middleware + action mixin.
-- Dummy Hanami app integration tests.
-
-### Phase 4 — Docs & polish (½ week)
+### Phase 3 — Docs & polish (½ week)
 
 - README.
-- `docs/adapters/rails.md`, `docs/adapters/hanami.md` (structure mirrors `server-ts/docs/adapters/hono.md`).
+- `docs/adapters/rails.md` (structure mirrors `server-ts/docs/adapters/hono.md`).
 - `docs/migration-from-server-ts.md` for users porting from a Node service.
 - CHANGELOG.
 
-### Phase 5 — `0.1.0` release
+### Phase 4 — `0.1.0` release
 
 - Publish to RubyGems alongside `supabase-auth`.
 - Announce in `supabase-rb` README.
 
-**Estimated total: 3 – 3.5 weeks of focused work.**
+**Estimated total: 2.5 – 3 weeks of focused work.**
 
 ---
 
@@ -465,15 +404,14 @@ A `spec/conformance/` suite mirrors the auth-mode matrix tested by `server-ts/sr
 | OQ-1 | Confirm `json-jwt` over `ruby-jwt` after a head-to-head spike on remote-JWKS support. | TBD | Phase 1, day 1 |
 | OQ-2 | Should context tuple be `[ctx, err]` (Go-style) or a `Result` object with `.success?` / `.failure?`? Affects every call site. | TBD | Before Phase 1 |
 | OQ-3 | Should `Supabase::Server::Rails::Controller` raise `ActionController::ParameterMissing`-equivalent or render a JSON 401 directly? Rails-idiomatic vs. matching `server-ts` semantics. | TBD | Phase 2, day 1 |
-| OQ-4 | Hanami DI: ship a `dry-system` provider out of the box, or document the recipe? | TBD | Phase 3, day 1 |
-| OQ-5 | Should adapters live in the same gem (current plan) or be separate gems (`supabase-server-rails`, `supabase-server-hanami`)? Current plan: single gem, optional requires — matches `server-ts`. | TBD | Before Phase 0 |
-| OQ-6 | Cookie-based session auth (Supabase SSR equivalent) — defer to v0.2, or out of scope entirely? | TBD | Post-launch |
+| OQ-4 | Should the adapter live in the same gem (current plan) or be a separate gem (`supabase-server-rails`)? Current plan: single gem, optional requires — matches `server-ts`. | TBD | Before Phase 0 |
+| OQ-5 | Cookie-based session auth (Supabase SSR equivalent) — defer to v0.2, or out of scope entirely? | TBD | Post-launch |
 
 ---
 
 ## 13. Out-of-scope (explicitly)
 
-- Sinatra / Roda / Grape / Cuba adapters — community contributions welcome post-v0.1.
+- Sinatra / Roda / Grape / Hanami / Cuba adapters — community contributions welcome post-v0.1.
 - Async I/O (`async-http-faraday`) — sync only.
 - Cookie session refresh / `@supabase/ssr` parity.
 - Generators (`rails g supabase:install`) — not at v0.1.
@@ -485,11 +423,10 @@ A `spec/conformance/` suite mirrors the auth-mode matrix tested by `server-ts/sr
 
 `server-rb` v0.1 ships when **all** of the following are true:
 
-- [ ] All FR-1 through FR-13 implemented and tested.
+- [ ] All FR-1 through FR-11 implemented and tested.
 - [ ] Conformance suite mirrors `server-ts/src/core/verify-credentials.test.ts` and passes.
-- [ ] Rails dummy app demonstrates US-1, US-2, US-5, US-6.
-- [ ] Hanami dummy app demonstrates US-3, US-5, US-6.
+- [ ] Rails dummy app demonstrates US-1, US-2, US-4, US-5.
 - [ ] README quickstart works end-to-end against a real Supabase project.
-- [ ] CI green on Ruby 3.0 / 3.2 / 3.3 × Rails 7.1 / 7.2 × Hanami 2.1 / 2.2.
+- [ ] CI green on Ruby 3.0 / 3.2 / 3.3 × Rails 7.1 / 7.2.
 - [ ] ≥ 90 % line coverage overall, ≥ 95 % on core.
 - [ ] Gem published to RubyGems as `supabase-server`.

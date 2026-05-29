@@ -2,7 +2,6 @@
 
 require "spec_helper"
 require "supabase/server/rails"
-require "supabase/server/hanami"
 
 RSpec.describe "Ruby compatibility (NFR-3)" do
   LIB_ROOT = File.expand_path("../../../lib/supabase/server", __dir__)
@@ -80,16 +79,12 @@ RSpec.describe "Ruby compatibility (NFR-3)" do
         "monkey-patches found:\n#{offenders.join("\n")}"
     end
 
-    it "opt-in concerns (Rails::Controller, Hanami::Action) only mutate the including class, not core classes" do
+    it "opt-in concerns (Rails::Controller) only mutate the including class, not core classes" do
       # Confirm the concerns are inert until explicitly included into a host class.
       bare = Class.new
       bare.include(Supabase::Server::Rails::Controller)
       expect(Object.instance_methods).not_to include(:supabase_context)
       expect(Kernel.instance_methods).not_to include(:verify_supabase_auth)
-
-      bare2 = Class.new
-      bare2.include(Supabase::Server::Hanami::Action)
-      expect(Object.instance_methods).not_to include(:supabase_context)
     end
   end
 

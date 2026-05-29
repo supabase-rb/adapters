@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
 
   spec.summary = "Server-side primitives for Supabase on Ruby web frameworks"
   spec.description = "Environment resolution, credential extraction, JWT verification, " \
-                     "and per-request Supabase client creation for Rails and Hanami apps."
+                     "and per-request Supabase client creation for Rails apps."
   spec.homepage = "https://github.com/supabase-rb/server"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.0.0"
