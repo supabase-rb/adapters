@@ -8,8 +8,8 @@ require "base64"
 require "json"
 
 RSpec.describe "NFR-4 Security contract" do
-  Credentials = Supabase::Server::Credentials unless defined?(Credentials)
-  SupabaseEnv = Supabase::Server::SupabaseEnv unless defined?(SupabaseEnv)
+  Credentials = Supabase::Rails::Credentials unless defined?(Credentials)
+  SupabaseEnv = Supabase::Rails::SupabaseEnv unless defined?(SupabaseEnv)
 
   let(:rsa_private) { OpenSSL::PKey::RSA.generate(2048) }
   let(:jwk) { ::JWT::JWK.new(rsa_private.public_key) }
@@ -25,14 +25,14 @@ RSpec.describe "NFR-4 Security contract" do
     )
   end
 
-  before(:each) { Supabase::Server::JWT._reset_cache! }
+  before(:each) { Supabase::Rails::JWT._reset_cache! }
 
   describe "1. All API key comparisons constant-time" do
     it "publishable mode uses Core.secure_compare (constant-time via OpenSSL.fixed_length_secure_compare)" do
       expect(OpenSSL).to receive(:fixed_length_secure_compare).at_least(:once).and_call_original
 
       creds = Credentials.new(token: nil, apikey: "sb_publishable_xyz")
-      result = Supabase::Server::Core.verify_credentials(
+      result = Supabase::Rails::Core.verify_credentials(
         creds, auth: :publishable, env: env_with
       )
       expect(result.auth_mode).to eq(:publishable)
@@ -42,7 +42,7 @@ RSpec.describe "NFR-4 Security contract" do
       expect(OpenSSL).to receive(:fixed_length_secure_compare).at_least(:once).and_call_original
 
       creds = Credentials.new(token: nil, apikey: "sb_secret_xyz")
-      result = Supabase::Server::Core.verify_credentials(
+      result = Supabase::Rails::Core.verify_credentials(
         creds, auth: :secret, env: env_with
       )
       expect(result.auth_mode).to eq(:secret)
@@ -52,19 +52,19 @@ RSpec.describe "NFR-4 Security contract" do
       # OpenSSL.fixed_length_secure_compare raises ArgumentError when sizes differ;
       # the wrapper must pre-check bytesize and return false.
       expect {
-        result = Supabase::Server::Core.secure_compare("abc", "abcdef")
+        result = Supabase::Rails::Core.secure_compare("abc", "abcdef")
         expect(result).to eq(false)
       }.not_to raise_error
     end
 
     it "Core.secure_compare delegates to OpenSSL.fixed_length_secure_compare for same-length inputs" do
       expect(OpenSSL).to receive(:fixed_length_secure_compare).with("abc", "abc").and_call_original
-      expect(Supabase::Server::Core.secure_compare("abc", "abc")).to eq(true)
+      expect(Supabase::Rails::Core.secure_compare("abc", "abc")).to eq(true)
     end
 
     it "never compares API keys via Ruby == (which is not constant-time)" do
       # Sanity check on source: ensure try_apikey_mode does not use plain == on the apikey value.
-      core_source = File.read(File.expand_path("../../../lib/supabase/server/core.rb", __dir__))
+      core_source = File.read(File.expand_path("../../../lib/supabase/rails/core.rb", __dir__))
       # try_apikey_mode body should not contain a `value ==` or `apikey ==` comparison.
       expect(core_source).to match(/secure_compare\(apikey, value\)/)
       expect(core_source).not_to match(/apikey\s*==\s*value/)
@@ -74,7 +74,7 @@ RSpec.describe "NFR-4 Security contract" do
 
   describe "2. JWT verification uses signature checks; never trusts alg: none" do
     it "restricts algorithms to the signed set RS256/ES256/HS256" do
-      expect(Supabase::Server::JWT::ALGORITHMS).to eq(%w[RS256 ES256 HS256]).and be_frozen
+      expect(Supabase::Rails::JWT::ALGORITHMS).to eq(%w[RS256 ES256 HS256]).and be_frozen
     end
 
     it "rejects a token whose alg header is 'none' (unsigned)" do
@@ -87,9 +87,9 @@ RSpec.describe "NFR-4 Security contract" do
       unsigned_token = "#{header}.#{payload}."
 
       expect {
-        Supabase::Server::JWT.verify(unsigned_token, env: env_with(jwks: jwks))
-      }.to raise_error(Supabase::Server::AuthError) do |err|
-        expect(err.code).to eq(Supabase::Server::AuthError::INVALID_CREDENTIALS)
+        Supabase::Rails::JWT.verify(unsigned_token, env: env_with(jwks: jwks))
+      }.to raise_error(Supabase::Rails::AuthError) do |err|
+        expect(err.code).to eq(Supabase::Rails::AuthError::INVALID_CREDENTIALS)
         expect(err.message).to eq("Invalid credentials")
       end
     end
@@ -104,9 +104,9 @@ RSpec.describe "NFR-4 Security contract" do
       )
 
       expect {
-        Supabase::Server::JWT.verify(forged, env: env_with(jwks: jwks))
-      }.to raise_error(Supabase::Server::AuthError) do |err|
-        expect(err.code).to eq(Supabase::Server::AuthError::INVALID_CREDENTIALS)
+        Supabase::Rails::JWT.verify(forged, env: env_with(jwks: jwks))
+      }.to raise_error(Supabase::Rails::AuthError) do |err|
+        expect(err.code).to eq(Supabase::Rails::AuthError::INVALID_CREDENTIALS)
       end
     end
 
@@ -119,13 +119,13 @@ RSpec.describe "NFR-4 Security contract" do
       stripped = "#{header}.#{payload}."
 
       expect {
-        Supabase::Server::JWT.verify(stripped, env: env_with(jwks: jwks))
-      }.to raise_error(Supabase::Server::AuthError)
+        Supabase::Rails::JWT.verify(stripped, env: env_with(jwks: jwks))
+      }.to raise_error(Supabase::Rails::AuthError)
     end
 
     it "calls ::JWT.decode with verify=true (third arg)" do
       # Static check on the source — ensure no one flips signature verification off.
-      jwt_source = File.read(File.expand_path("../../../lib/supabase/server/jwt.rb", __dir__))
+      jwt_source = File.read(File.expand_path("../../../lib/supabase/rails/jwt.rb", __dir__))
       expect(jwt_source).to match(/::JWT\.decode\(\s*token,\s*nil,\s*true,/)
     end
   end
@@ -139,7 +139,7 @@ RSpec.describe "NFR-4 Security contract" do
         "SUPABASE_JWKS" => nil,
         "SUPABASE_JWKS_URL" => "http://attacker.example/.well-known/jwks.json"
       ) do
-        env = Supabase::Server::Env.resolve
+        env = Supabase::Rails::Env.resolve
         expect(env.jwks).to be_nil
       end
     end
@@ -152,7 +152,7 @@ RSpec.describe "NFR-4 Security contract" do
         "SUPABASE_JWKS" => nil,
         "SUPABASE_JWKS_URL" => "https://auth.example.com/jwks.json"
       ) do
-        env = Supabase::Server::Env.resolve
+        env = Supabase::Rails::Env.resolve
         expect(env.jwks).to be_a(URI::HTTPS)
       end
     end
@@ -165,7 +165,7 @@ RSpec.describe "NFR-4 Security contract" do
         "SUPABASE_JWKS" => nil,
         "SUPABASE_JWKS_URL" => "http://localhost:54321/.well-known/jwks.json"
       ) do
-        env = Supabase::Server::Env.resolve
+        env = Supabase::Rails::Env.resolve
         expect(env.jwks).to be_a(URI::HTTP)
         expect(env.jwks.host).to eq("localhost")
       end
@@ -182,9 +182,9 @@ RSpec.describe "NFR-4 Security contract" do
       )
 
       expect {
-        Supabase::Server::JWT.verify(token, env: env_with(jwks: bad_uri))
-      }.to raise_error(Supabase::Server::AuthError) do |err|
-        expect(err.code).to eq(Supabase::Server::AuthError::INVALID_CREDENTIALS)
+        Supabase::Rails::JWT.verify(token, env: env_with(jwks: bad_uri))
+      }.to raise_error(Supabase::Rails::AuthError) do |err|
+        expect(err.code).to eq(Supabase::Rails::AuthError::INVALID_CREDENTIALS)
       end
       expect(Net::HTTP).not_to have_received(:get_response)
     end
@@ -200,7 +200,7 @@ RSpec.describe "NFR-4 Security contract" do
         rsa_private, "RS256", { kid: jwk.kid }
       )
 
-      result = Supabase::Server::JWT.verify(token, env: env_with(jwks: uri))
+      result = Supabase::Rails::JWT.verify(token, env: env_with(jwks: uri))
       expect(result[:user_claims].id).to eq("u1")
     end
 
@@ -215,7 +215,7 @@ RSpec.describe "NFR-4 Security contract" do
         rsa_private, "RS256", { kid: jwk.kid }
       )
 
-      result = Supabase::Server::JWT.verify(token, env: env_with(jwks: uri))
+      result = Supabase::Rails::JWT.verify(token, env: env_with(jwks: uri))
       expect(result[:user_claims].id).to eq("u1")
     end
   end
@@ -223,15 +223,15 @@ RSpec.describe "NFR-4 Security contract" do
   describe "4. Default error messages do not leak which credential failed" do
     it "publishable mode failure returns generic 'Invalid credentials' message" do
       creds = Credentials.new(token: nil, apikey: "wrong_key")
-      err = capture_auth_error { Supabase::Server::Core.verify_credentials(creds, auth: :publishable, env: env_with) }
+      err = capture_auth_error { Supabase::Rails::Core.verify_credentials(creds, auth: :publishable, env: env_with) }
       expect(err.message).to eq("Invalid credentials")
-      expect(err.code).to eq(Supabase::Server::AuthError::INVALID_CREDENTIALS)
+      expect(err.code).to eq(Supabase::Rails::AuthError::INVALID_CREDENTIALS)
       expect(err.status).to eq(401)
     end
 
     it "secret mode failure returns generic 'Invalid credentials' message" do
       creds = Credentials.new(token: nil, apikey: "wrong_key")
-      err = capture_auth_error { Supabase::Server::Core.verify_credentials(creds, auth: :secret, env: env_with) }
+      err = capture_auth_error { Supabase::Rails::Core.verify_credentials(creds, auth: :secret, env: env_with) }
       expect(err.message).to eq("Invalid credentials")
     end
 
@@ -240,7 +240,7 @@ RSpec.describe "NFR-4 Security contract" do
         { sub: "u1", iat: Time.now.to_i - 7200, exp: Time.now.to_i - 3600 },
         rsa_private, "RS256", { kid: jwk.kid }
       )
-      err = capture_auth_error { Supabase::Server::JWT.verify(expired, env: env_with(jwks: jwks)) }
+      err = capture_auth_error { Supabase::Rails::JWT.verify(expired, env: env_with(jwks: jwks)) }
       expect(err.message).to eq("Invalid credentials")
     end
 
@@ -250,12 +250,12 @@ RSpec.describe "NFR-4 Security contract" do
         { sub: "u1", exp: Time.now.to_i + 3600 },
         other, "RS256", { kid: jwk.kid }
       )
-      err = capture_auth_error { Supabase::Server::JWT.verify(forged, env: env_with(jwks: jwks)) }
+      err = capture_auth_error { Supabase::Rails::JWT.verify(forged, env: env_with(jwks: jwks)) }
       expect(err.message).to eq("Invalid credentials")
     end
 
     it "user-mode failure (malformed token) does not include parser details" do
-      err = capture_auth_error { Supabase::Server::JWT.verify("not.a.jwt.at.all", env: env_with(jwks: jwks)) }
+      err = capture_auth_error { Supabase::Rails::JWT.verify("not.a.jwt.at.all", env: env_with(jwks: jwks)) }
       expect(err.message).to eq("Invalid credentials")
       # Sanity: the message must not echo the underlying jwt-gem parser error.
       expect(err.message).not_to match(/decode|parse|invalid segment|signature/i)
@@ -264,23 +264,23 @@ RSpec.describe "NFR-4 Security contract" do
     it "all-modes-exhausted failure returns generic 'Invalid credentials' message" do
       creds = Credentials.new(token: "sb_bogus", apikey: "wrong")
       err = capture_auth_error do
-        Supabase::Server::Core.verify_credentials(creds, auth: [:publishable, :secret], env: env_with)
+        Supabase::Rails::Core.verify_credentials(creds, auth: [:publishable, :secret], env: env_with)
       end
       expect(err.message).to eq("Invalid credentials")
     end
 
     it "AuthError.invalid_credentials factory always produces the generic message + 401" do
-      err = Supabase::Server::AuthError.invalid_credentials
+      err = Supabase::Rails::AuthError.invalid_credentials
       expect(err.message).to eq("Invalid credentials")
       expect(err.status).to eq(401)
-      expect(err.code).to eq(Supabase::Server::AuthError::INVALID_CREDENTIALS)
+      expect(err.code).to eq(Supabase::Rails::AuthError::INVALID_CREDENTIALS)
     end
   end
 
   def capture_auth_error
     yield
     raise "expected AuthError to be raised, but block completed normally"
-  rescue Supabase::Server::AuthError => e
+  rescue Supabase::Rails::AuthError => e
     e
   end
 end

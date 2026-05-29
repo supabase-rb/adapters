@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-RSpec.describe Supabase::Server::CORS do
+RSpec.describe Supabase::Rails::CORS do
   describe ".build_headers" do
     it "returns supabase-js defaults when config is true" do
       headers = described_class.build_headers(true)

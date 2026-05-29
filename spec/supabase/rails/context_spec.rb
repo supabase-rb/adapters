@@ -2,9 +2,9 @@
 
 require "spec_helper"
 
-RSpec.describe Supabase::Server, ".create_context" do
+RSpec.describe Supabase::Rails, ".create_context" do
   def valid_env(overrides = {})
-    Supabase::Server::SupabaseEnv.new(
+    Supabase::Rails::SupabaseEnv.new(
       url: "https://test.supabase.co",
       publishable_keys: { "default" => "sb_publishable_xyz" },
       secret_keys: { "default" => "sb_secret_xyz" },
@@ -33,7 +33,7 @@ RSpec.describe Supabase::Server, ".create_context" do
       expect(result).to be_success
       expect(result).not_to be_failure
       expect(result.error).to be_nil
-      expect(result.value).to be_a(Supabase::Server::SupabaseContext)
+      expect(result.value).to be_a(Supabase::Rails::SupabaseContext)
       expect(result.value.supabase).to be_a(::Supabase::Client)
       expect(result.value.supabase_admin).to be_a(::Supabase::Client)
       expect(result.value.auth_mode).to eq(:none)
@@ -124,9 +124,9 @@ RSpec.describe Supabase::Server, ".create_context" do
       expect(result).to be_failure
       expect(result).not_to be_success
       expect(result.value).to be_nil
-      expect(result.error).to be_a(Supabase::Server::AuthError)
+      expect(result.error).to be_a(Supabase::Rails::AuthError)
       expect(result.error.status).to eq(401)
-      expect(result.error.code).to eq(Supabase::Server::AuthError::INVALID_CREDENTIALS)
+      expect(result.error.code).to eq(Supabase::Rails::AuthError::INVALID_CREDENTIALS)
     end
 
     it "defaults to auth: :user when no auth option is provided" do
@@ -144,7 +144,7 @@ RSpec.describe Supabase::Server, ".create_context" do
       )
 
       expect(result).to be_failure
-      expect(result.error).to be_a(Supabase::Server::AuthError)
+      expect(result.error).to be_a(Supabase::Rails::AuthError)
     end
   end
 
@@ -153,7 +153,7 @@ RSpec.describe Supabase::Server, ".create_context" do
       result = described_class.create_context(
         {},
         auth: :none,
-        env: Supabase::Server::SupabaseEnv.new(
+        env: Supabase::Rails::SupabaseEnv.new(
           url: "https://test.supabase.co",
           publishable_keys: {},
           secret_keys: {},
@@ -162,11 +162,11 @@ RSpec.describe Supabase::Server, ".create_context" do
       )
 
       expect(result).to be_failure
-      expect(result.error).to be_a(Supabase::Server::AuthError)
+      expect(result.error).to be_a(Supabase::Rails::AuthError)
       expect(result.error.status).to eq(500)
       expect(result.error.code).to eq(
-        Supabase::Server::EnvError::MISSING_DEFAULT_PUBLISHABLE_KEY
-      ).or eq(Supabase::Server::EnvError::MISSING_DEFAULT_SECRET_KEY)
+        Supabase::Rails::EnvError::MISSING_DEFAULT_PUBLISHABLE_KEY
+      ).or eq(Supabase::Rails::EnvError::MISSING_DEFAULT_SECRET_KEY)
     end
   end
 
@@ -177,7 +177,7 @@ RSpec.describe Supabase::Server, ".create_context" do
 
     it "exposes value and nil error on success" do
       expect(result).to be_success
-      expect(result.value).to be_a(Supabase::Server::SupabaseContext)
+      expect(result.value).to be_a(Supabase::Rails::SupabaseContext)
       expect(result.error).to be_nil
     end
 
@@ -186,7 +186,7 @@ RSpec.describe Supabase::Server, ".create_context" do
 
       expect(failed).to be_failure
       expect(failed.value).to be_nil
-      expect(failed.error).to be_a(Supabase::Server::AuthError)
+      expect(failed.error).to be_a(Supabase::Rails::AuthError)
     end
 
     it "does not support implicit array destructuring" do

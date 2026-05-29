@@ -4,8 +4,8 @@ require "spec_helper"
 require "jwt"
 require "openssl"
 
-RSpec.describe Supabase::Server::Core, ".verify_credentials" do
-  Credentials = Supabase::Server::Credentials unless defined?(Credentials)
+RSpec.describe Supabase::Rails::Core, ".verify_credentials" do
+  Credentials = Supabase::Rails::Credentials unless defined?(Credentials)
 
   def default_env(overrides = {})
     {
@@ -46,8 +46,8 @@ RSpec.describe Supabase::Server::Core, ".verify_credentials" do
       creds = Credentials.new(token: nil, apikey: "wrong_key")
       expect {
         described_class.verify_credentials(creds, auth: :publishable, env: default_env)
-      }.to raise_error(Supabase::Server::AuthError) do |err|
-        expect(err.code).to eq(Supabase::Server::AuthError::INVALID_CREDENTIALS)
+      }.to raise_error(Supabase::Rails::AuthError) do |err|
+        expect(err.code).to eq(Supabase::Rails::AuthError::INVALID_CREDENTIALS)
       end
     end
 
@@ -59,7 +59,7 @@ RSpec.describe Supabase::Server::Core, ".verify_credentials" do
       creds = Credentials.new(token: nil, apikey: "sb_publishable_web")
       expect {
         described_class.verify_credentials(creds, auth: :publishable, env: env)
-      }.to raise_error(Supabase::Server::AuthError)
+      }.to raise_error(Supabase::Rails::AuthError)
     end
 
     it "matches named key with colon syntax and returns key_name" do
@@ -80,7 +80,7 @@ RSpec.describe Supabase::Server::Core, ".verify_credentials" do
       creds = Credentials.new(token: nil, apikey: "sb_publishable_mobile")
       expect {
         described_class.verify_credentials(creds, auth: "publishable:web", env: env)
-      }.to raise_error(Supabase::Server::AuthError)
+      }.to raise_error(Supabase::Rails::AuthError)
     end
 
     it "rejects wrong key type (publishable key against secret mode)" do
@@ -90,7 +90,7 @@ RSpec.describe Supabase::Server::Core, ".verify_credentials" do
       creds = Credentials.new(token: nil, apikey: "sb_publishable_web")
       expect {
         described_class.verify_credentials(creds, auth: "secret:web", env: env)
-      }.to raise_error(Supabase::Server::AuthError)
+      }.to raise_error(Supabase::Rails::AuthError)
     end
 
     it "matches any key with wildcard syntax" do
@@ -128,7 +128,7 @@ RSpec.describe Supabase::Server::Core, ".verify_credentials" do
       creds = Credentials.new(token: nil, apikey: "wrong_secret")
       expect {
         described_class.verify_credentials(creds, auth: :secret, env: default_env)
-      }.to raise_error(Supabase::Server::AuthError)
+      }.to raise_error(Supabase::Rails::AuthError)
     end
 
     it "only matches default key when bare secret is used" do
@@ -139,7 +139,7 @@ RSpec.describe Supabase::Server::Core, ".verify_credentials" do
       creds = Credentials.new(token: nil, apikey: "sb_secret_web")
       expect {
         described_class.verify_credentials(creds, auth: :secret, env: env)
-      }.to raise_error(Supabase::Server::AuthError)
+      }.to raise_error(Supabase::Rails::AuthError)
     end
 
     it "matches secret wildcard and returns key_name" do
@@ -193,8 +193,8 @@ RSpec.describe Supabase::Server::Core, ".verify_credentials" do
       creds = Credentials.new(token: "invalid.jwt.token", apikey: nil)
       expect {
         described_class.verify_credentials(creds, auth: :user, env: default_env(jwks: @jwks))
-      }.to raise_error(Supabase::Server::AuthError) do |err|
-        expect(err.code).to eq(Supabase::Server::AuthError::INVALID_CREDENTIALS)
+      }.to raise_error(Supabase::Rails::AuthError) do |err|
+        expect(err.code).to eq(Supabase::Rails::AuthError::INVALID_CREDENTIALS)
       end
     end
 
@@ -202,8 +202,8 @@ RSpec.describe Supabase::Server::Core, ".verify_credentials" do
       creds = Credentials.new(token: nil, apikey: nil)
       expect {
         described_class.verify_credentials(creds, auth: :user, env: default_env(jwks: @jwks))
-      }.to raise_error(Supabase::Server::AuthError) do |err|
-        expect(err.code).to eq(Supabase::Server::AuthError::INVALID_CREDENTIALS)
+      }.to raise_error(Supabase::Rails::AuthError) do |err|
+        expect(err.code).to eq(Supabase::Rails::AuthError::INVALID_CREDENTIALS)
       end
     end
 
@@ -217,14 +217,14 @@ RSpec.describe Supabase::Server::Core, ".verify_credentials" do
       creds = Credentials.new(token: expired_token, apikey: nil)
       expect {
         described_class.verify_credentials(creds, auth: :user, env: default_env(jwks: @jwks))
-      }.to raise_error(Supabase::Server::AuthError)
+      }.to raise_error(Supabase::Rails::AuthError)
     end
 
     it "raises AuthError with status 500 when JWKS is not configured" do
       creds = Credentials.new(token: @valid_token, apikey: nil)
       expect {
         described_class.verify_credentials(creds, auth: :user, env: default_env(jwks: nil))
-      }.to raise_error(Supabase::Server::AuthError) do |err|
+      }.to raise_error(Supabase::Rails::AuthError) do |err|
         expect(err.status).to eq(500)
       end
     end
@@ -239,7 +239,7 @@ RSpec.describe Supabase::Server::Core, ".verify_credentials" do
       creds = Credentials.new(token: no_sub_token, apikey: nil)
       expect {
         described_class.verify_credentials(creds, auth: :user, env: default_env(jwks: @jwks))
-      }.to raise_error(Supabase::Server::AuthError)
+      }.to raise_error(Supabase::Rails::AuthError)
     end
   end
 
@@ -264,7 +264,7 @@ RSpec.describe Supabase::Server::Core, ".verify_credentials" do
       creds = Credentials.new(token: nil, apikey: "sb_publishable_xyz")
       expect {
         described_class.verify_credentials(creds, auth: "publishable:*", env: env)
-      }.to raise_error(Supabase::Server::AuthError)
+      }.to raise_error(Supabase::Rails::AuthError)
     end
   end
 
@@ -296,8 +296,8 @@ RSpec.describe Supabase::Server::Core, ".verify_credentials" do
       creds = Credentials.new(token: "garbage.jwt.token", apikey: nil)
       expect {
         described_class.verify_credentials(creds, auth: [:user, :none], env: default_env(jwks: @jwks2))
-      }.to raise_error(Supabase::Server::AuthError) do |err|
-        expect(err.code).to eq(Supabase::Server::AuthError::INVALID_CREDENTIALS)
+      }.to raise_error(Supabase::Rails::AuthError) do |err|
+        expect(err.code).to eq(Supabase::Rails::AuthError::INVALID_CREDENTIALS)
       end
     end
 
@@ -309,7 +309,7 @@ RSpec.describe Supabase::Server::Core, ".verify_credentials" do
       creds = Credentials.new(token: expired_token, apikey: nil)
       expect {
         described_class.verify_credentials(creds, auth: [:user, :none], env: default_env(jwks: @jwks2))
-      }.to raise_error(Supabase::Server::AuthError)
+      }.to raise_error(Supabase::Rails::AuthError)
     end
 
     it "falls through to none when no token is present" do
@@ -322,14 +322,14 @@ RSpec.describe Supabase::Server::Core, ".verify_credentials" do
       creds = Credentials.new(token: "garbage.jwt.token", apikey: "sb_publishable_xyz")
       expect {
         described_class.verify_credentials(creds, auth: [:user, :publishable], env: default_env(jwks: @jwks2))
-      }.to raise_error(Supabase::Server::AuthError)
+      }.to raise_error(Supabase::Rails::AuthError)
     end
 
     it "rejects invalid JWT instead of falling through to secret mode" do
       creds = Credentials.new(token: "garbage.jwt.token", apikey: "sb_secret_xyz")
       expect {
         described_class.verify_credentials(creds, auth: [:user, :secret], env: default_env(jwks: @jwks2))
-      }.to raise_error(Supabase::Server::AuthError)
+      }.to raise_error(Supabase::Rails::AuthError)
     end
 
     it "falls through to secret when Authorization carries an sb_ secret" do
@@ -352,8 +352,8 @@ RSpec.describe Supabase::Server::Core, ".verify_credentials" do
       creds = Credentials.new(token: nil, apikey: nil)
       expect {
         described_class.verify_credentials(creds, env: default_env)
-      }.to raise_error(Supabase::Server::AuthError) do |err|
-        expect(err.code).to eq(Supabase::Server::AuthError::INVALID_CREDENTIALS)
+      }.to raise_error(Supabase::Rails::AuthError) do |err|
+        expect(err.code).to eq(Supabase::Rails::AuthError::INVALID_CREDENTIALS)
       end
     end
   end
@@ -370,7 +370,7 @@ RSpec.describe Supabase::Server::Core, ".verify_credentials" do
       creds = Credentials.new(token: nil, apikey: "short")
       expect {
         described_class.verify_credentials(creds, auth: :publishable, env: env)
-      }.to raise_error(Supabase::Server::AuthError)
+      }.to raise_error(Supabase::Rails::AuthError)
     end
   end
 end

@@ -35,7 +35,7 @@ RSpec.describe "Performance budget (NFR-2)" do
   end
 
   def valid_env(jwks)
-    Supabase::Server::SupabaseEnv.new(
+    Supabase::Rails::SupabaseEnv.new(
       url: "https://test.supabase.co",
       publishable_keys: { "default" => "sb_publishable_xyz" },
       secret_keys: { "default" => "sb_secret_xyz" },
@@ -58,10 +58,10 @@ RSpec.describe "Performance budget (NFR-2)" do
     it "verifies a token against an in-memory JWKS in under the budget (median)" do
       env = valid_env(@jwks)
 
-      WARMUP.times { Supabase::Server::JWT.verify(@token, env: env) }
+      WARMUP.times { Supabase::Rails::JWT.verify(@token, env: env) }
 
       samples = Array.new(ITERATIONS) do
-        measure_ms { Supabase::Server::JWT.verify(@token, env: env) }
+        measure_ms { Supabase::Rails::JWT.verify(@token, env: env) }
       end
 
       med = median(samples)
@@ -79,14 +79,14 @@ RSpec.describe "Performance budget (NFR-2)" do
       allow(response).to receive(:is_a?).with(Net::HTTPSuccess).and_return(true)
       allow(Net::HTTP).to receive(:get_response).with(jwks_url).and_return(response)
 
-      Supabase::Server::JWT._reset_cache!
+      Supabase::Rails::JWT._reset_cache!
       env = valid_env(jwks_url)
 
       # Prime the cache + warm up.
-      (WARMUP + 1).times { Supabase::Server::JWT.verify(@token, env: env) }
+      (WARMUP + 1).times { Supabase::Rails::JWT.verify(@token, env: env) }
 
       samples = Array.new(ITERATIONS) do
-        measure_ms { Supabase::Server::JWT.verify(@token, env: env) }
+        measure_ms { Supabase::Rails::JWT.verify(@token, env: env) }
       end
 
       med = median(samples)
@@ -128,12 +128,12 @@ RSpec.describe "Performance budget (NFR-2)" do
       end
 
       WARMUP.times do
-        Supabase::Server::JWT._reset_cache!
-        Supabase::Server.create_context(request, auth: :user, env: env)
+        Supabase::Rails::JWT._reset_cache!
+        Supabase::Rails.create_context(request, auth: :user, env: env)
       end
       cold_samples = Array.new(ITERATIONS) do
-        Supabase::Server::JWT._reset_cache!
-        measure_ms { Supabase::Server.create_context(request, auth: :user, env: env) }
+        Supabase::Rails::JWT._reset_cache!
+        measure_ms { Supabase::Rails.create_context(request, auth: :user, env: env) }
       end
 
       baseline_med = median(baseline_samples)

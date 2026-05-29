@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Supabase
-  module Server
+  module Rails
     module Logging
       @mutex = Mutex.new
       @logger = nil

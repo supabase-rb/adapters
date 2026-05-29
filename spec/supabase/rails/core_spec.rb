@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-RSpec.describe Supabase::Server::Core do
+RSpec.describe Supabase::Rails::Core do
   describe ".extract_credentials" do
     it "extracts Bearer token from Authorization header" do
       creds = described_class.extract_credentials("Authorization" => "Bearer test-token")
@@ -101,7 +101,7 @@ RSpec.describe Supabase::Server::Core do
 
     it "returns a Credentials struct" do
       creds = described_class.extract_credentials({})
-      expect(creds).to be_a(Supabase::Server::Credentials)
+      expect(creds).to be_a(Supabase::Rails::Credentials)
       expect(creds).to respond_to(:token, :apikey)
     end
 

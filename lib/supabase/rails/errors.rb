@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Supabase
-  module Server
+  module Rails
     class EnvError < StandardError
       ENV_GENERIC_ERROR = "ENV_ERROR"
       MISSING_SUPABASE_URL = "MISSING_SUPABASE_URL"

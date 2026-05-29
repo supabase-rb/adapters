@@ -6,7 +6,7 @@ require_relative "errors"
 require_relative "logging"
 
 module Supabase
-  module Server
+  module Rails
     SupabaseContext = Data.define(
       :supabase, :supabase_admin,
       :user_claims, :jwt_claims,

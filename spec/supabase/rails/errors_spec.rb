@@ -2,8 +2,8 @@
 
 require "spec_helper"
 
-RSpec.describe "Supabase::Server error types" do
-  describe Supabase::Server::EnvError do
+RSpec.describe "Supabase::Rails error types" do
+  describe Supabase::Rails::EnvError do
     it "inherits from StandardError" do
       expect(described_class.ancestors).to include(StandardError)
     end
@@ -101,7 +101,7 @@ RSpec.describe "Supabase::Server error types" do
     end
   end
 
-  describe Supabase::Server::AuthError do
+  describe Supabase::Rails::AuthError do
     it "inherits from StandardError" do
       expect(described_class.ancestors).to include(StandardError)
     end

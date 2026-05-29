@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 require "spec_helper"
-require "supabase/server/rails"
+require "supabase/rails"
 
 RSpec.describe "Ruby compatibility (NFR-3)" do
-  LIB_ROOT = File.expand_path("../../../lib/supabase/server", __dir__)
-  GEMSPEC_PATH = File.expand_path("../../../supabase-server.gemspec", __dir__)
+  LIB_ROOT = File.expand_path("../../../lib/supabase/rails", __dir__)
+  GEMSPEC_PATH = File.expand_path("../../../supabase-rails.gemspec", __dir__)
 
   def all_lib_files
     Dir[File.join(LIB_ROOT, "**", "*.rb")]
@@ -33,9 +33,9 @@ RSpec.describe "Ruby compatibility (NFR-3)" do
     end
 
     it "module-level string constants are frozen" do
-      expect(Supabase::Server::CORS::DEFAULT_HEADERS).to be_frozen
-      expect(Supabase::Server::EnvError::MISSING_SUPABASE_URL).to be_frozen
-      expect(Supabase::Server::AuthError::INVALID_CREDENTIALS).to be_frozen
+      expect(Supabase::Rails::CORS::DEFAULT_HEADERS).to be_frozen
+      expect(Supabase::Rails::EnvError::MISSING_SUPABASE_URL).to be_frozen
+      expect(Supabase::Rails::AuthError::INVALID_CREDENTIALS).to be_frozen
     end
   end
 
@@ -74,7 +74,7 @@ RSpec.describe "Ruby compatibility (NFR-3)" do
     it "opt-in concerns (Rails::Controller) only mutate the including class, not core classes" do
       # Confirm the concerns are inert until explicitly included into a host class.
       bare = Class.new
-      bare.include(Supabase::Server::Rails::Controller)
+      bare.include(Supabase::Rails::Controller)
       expect(Object.instance_methods).not_to include(:supabase_context)
       expect(Kernel.instance_methods).not_to include(:verify_supabase_auth)
     end
@@ -85,13 +85,13 @@ RSpec.describe "Ruby compatibility (NFR-3)" do
       expect(RSpec.configuration.expose_dsl_globally?).to be(false)
     end
 
-    it "core modules are reachable without any extra requires beyond `supabase/server`" do
-      expect(defined?(Supabase::Server::Env)).to eq("constant")
-      expect(defined?(Supabase::Server::Core)).to eq("constant")
-      expect(defined?(Supabase::Server::JWT)).to eq("constant")
-      expect(defined?(Supabase::Server::CORS)).to eq("constant")
-      expect(defined?(Supabase::Server::EnvError)).to eq("constant")
-      expect(defined?(Supabase::Server::AuthError)).to eq("constant")
+    it "core modules are reachable without any extra requires beyond `supabase/rails`" do
+      expect(defined?(Supabase::Rails::Env)).to eq("constant")
+      expect(defined?(Supabase::Rails::Core)).to eq("constant")
+      expect(defined?(Supabase::Rails::JWT)).to eq("constant")
+      expect(defined?(Supabase::Rails::CORS)).to eq("constant")
+      expect(defined?(Supabase::Rails::EnvError)).to eq("constant")
+      expect(defined?(Supabase::Rails::AuthError)).to eq("constant")
     end
   end
 end

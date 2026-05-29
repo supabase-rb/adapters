@@ -3,7 +3,7 @@
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 $LOAD_PATH.unshift File.expand_path("../../supabase-rb/lib", __dir__)
 
-require "supabase/server"
+require "supabase/rails"
 
 module EnvStub
   def with_env(vars)

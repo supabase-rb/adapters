@@ -3,7 +3,7 @@
 require "spec_helper"
 require "json"
 
-RSpec.describe Supabase::Server::Env do
+RSpec.describe Supabase::Rails::Env do
   # Make sure tests run with a clean Supabase env regardless of the host shell.
   around do |example|
     cleared = {
@@ -20,8 +20,8 @@ RSpec.describe Supabase::Server::Env do
 
   describe ".resolve" do
     it "raises EnvError when SUPABASE_URL is missing" do
-      expect { described_class.resolve }.to raise_error(Supabase::Server::EnvError) do |err|
-        expect(err.code).to eq(Supabase::Server::EnvError::MISSING_SUPABASE_URL)
+      expect { described_class.resolve }.to raise_error(Supabase::Rails::EnvError) do |err|
+        expect(err.code).to eq(Supabase::Rails::EnvError::MISSING_SUPABASE_URL)
         expect(err.status).to eq(500)
       end
     end

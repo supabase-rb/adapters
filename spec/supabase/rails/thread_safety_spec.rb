@@ -6,13 +6,13 @@ require "json"
 require "net/http"
 require "openssl"
 require "uri"
-require "supabase/server/rails"
+require "supabase/rails"
 
 RSpec.describe "Thread safety (NFR-1)" do
   THREAD_COUNT = 16
 
   def valid_env(overrides = {})
-    Supabase::Server::SupabaseEnv.new(
+    Supabase::Rails::SupabaseEnv.new(
       url: "https://test.supabase.co",
       publishable_keys: { "default" => "sb_publishable_xyz" },
       secret_keys: { "default" => "sb_secret_xyz" },
@@ -62,7 +62,7 @@ RSpec.describe "Thread safety (NFR-1)" do
 
   describe "no mutable class-level state in request path" do
     it "Env, Core, CORS, and Server expose zero instance variables" do
-      [Supabase::Server::Env, Supabase::Server::Core, Supabase::Server::CORS, Supabase::Server].each do |mod|
+      [Supabase::Rails::Env, Supabase::Rails::Core, Supabase::Rails::CORS, Supabase::Rails].each do |mod|
         expect(mod.instance_variables).to(
           be_empty,
           "expected #{mod} to have no module-level instance variables (request-path modules must be stateless), got #{mod.instance_variables.inspect}"
@@ -70,15 +70,15 @@ RSpec.describe "Thread safety (NFR-1)" do
       end
     end
 
-    it "Supabase::Server::JWT only owns the cache mutex + cache hash" do
-      expect(Supabase::Server::JWT.instance_variables).to contain_exactly(:@cache_mutex, :@cache)
-      expect(Supabase::Server::JWT.instance_variable_get(:@cache_mutex)).to be_a(Mutex)
-      expect(Supabase::Server::JWT.instance_variable_get(:@cache)).to be_a(Hash)
+    it "Supabase::Rails::JWT only owns the cache mutex + cache hash" do
+      expect(Supabase::Rails::JWT.instance_variables).to contain_exactly(:@cache_mutex, :@cache)
+      expect(Supabase::Rails::JWT.instance_variable_get(:@cache_mutex)).to be_a(Mutex)
+      expect(Supabase::Rails::JWT.instance_variable_get(:@cache)).to be_a(Hash)
     end
 
-    it "Supabase::Server::Logging owns only the logger mutex + logger ref" do
-      expect(Supabase::Server::Logging.instance_variables).to contain_exactly(:@mutex, :@logger)
-      expect(Supabase::Server::Logging.instance_variable_get(:@mutex)).to be_a(Mutex)
+    it "Supabase::Rails::Logging owns only the logger mutex + logger ref" do
+      expect(Supabase::Rails::Logging.instance_variables).to contain_exactly(:@mutex, :@logger)
+      expect(Supabase::Rails::Logging.instance_variable_get(:@mutex)).to be_a(Mutex)
     end
   end
 
@@ -90,7 +90,7 @@ RSpec.describe "Thread safety (NFR-1)" do
       @jwks = { "keys" => [jwk.export] }
     end
 
-    before(:each) { Supabase::Server::JWT._reset_cache! }
+    before(:each) { Supabase::Rails::JWT._reset_cache! }
 
     def make_token(sub: "user-123")
       ::JWT.encode(
@@ -116,7 +116,7 @@ RSpec.describe "Thread safety (NFR-1)" do
 
       env = valid_env(jwks: jwks_url)
       results = run_concurrently(THREAD_COUNT) do
-        Supabase::Server::JWT.verify(make_token, env: env)
+        Supabase::Rails::JWT.verify(make_token, env: env)
       end
 
       expect(results.map { |r| r[:user_claims].id }).to all(eq("user-123"))
@@ -146,9 +146,9 @@ RSpec.describe "Thread safety (NFR-1)" do
 
       results = run_concurrently(THREAD_COUNT) do |i|
         if i.even?
-          Supabase::Server::JWT.verify(token_a, env: valid_env(jwks: url_a))
+          Supabase::Rails::JWT.verify(token_a, env: valid_env(jwks: url_a))
         else
-          Supabase::Server::JWT.verify(token_b, env: valid_env(jwks: url_b))
+          Supabase::Rails::JWT.verify(token_b, env: valid_env(jwks: url_b))
         end
       end
 
@@ -167,7 +167,7 @@ RSpec.describe "Thread safety (NFR-1)" do
       @jwks = { "keys" => [jwk.export] }
     end
 
-    before(:each) { Supabase::Server::JWT._reset_cache! }
+    before(:each) { Supabase::Rails::JWT._reset_cache! }
 
     def token_for(sub)
       ::JWT.encode(
@@ -182,14 +182,14 @@ RSpec.describe "Thread safety (NFR-1)" do
       results = run_concurrently(THREAD_COUNT) do |i|
         sub = "user-#{i}"
         request = { "Authorization" => "Bearer #{token_for(sub)}" }
-        result = Supabase::Server.create_context(request, auth: :user, env: env)
+        result = Supabase::Rails.create_context(request, auth: :user, env: env)
         [sub, result]
       end
 
       results.each do |sub, result|
         expect(result).to be_success
         ctx = result.value
-        expect(ctx).to be_a(Supabase::Server::SupabaseContext)
+        expect(ctx).to be_a(Supabase::Rails::SupabaseContext)
         expect(ctx.user_claims.id).to eq(sub)
         expect(ctx.jwt_claims["sub"]).to eq(sub)
       end
@@ -203,7 +203,7 @@ RSpec.describe "Thread safety (NFR-1)" do
         [200, { "Content-Type" => "text/plain" }, [ctx.user_claims.id]]
       end
 
-      middleware = Supabase::Server::Rails::Middleware.new(
+      middleware = Supabase::Rails::Middleware.new(
         downstream, auth: :user, env: env_obj, cors: false
       )
 

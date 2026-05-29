@@ -2,9 +2,9 @@
 
 require "spec_helper"
 
-RSpec.describe Supabase::Server::Core, ".create_admin_client" do
+RSpec.describe Supabase::Rails::Core, ".create_admin_client" do
   def valid_env(overrides = {})
-    Supabase::Server::SupabaseEnv.new(
+    Supabase::Rails::SupabaseEnv.new(
       url: "https://test.supabase.co",
       publishable_keys: { "default" => "sb_publishable_xyz" },
       secret_keys: { "default" => "sb_secret_xyz" },
@@ -38,16 +38,16 @@ RSpec.describe Supabase::Server::Core, ".create_admin_client" do
       described_class.create_admin_client(
         env: { secret_key: "sb_secret_xyz" }
       )
-    end.to raise_error(Supabase::Server::EnvError) { |e|
-      expect(e.code).to eq(Supabase::Server::EnvError::MISSING_SUPABASE_URL)
+    end.to raise_error(Supabase::Rails::EnvError) { |e|
+      expect(e.code).to eq(Supabase::Rails::EnvError::MISSING_SUPABASE_URL)
     }
   end
 
   it "raises MISSING_DEFAULT_SECRET_KEY when secret_keys is empty and no key_name given" do
     expect do
       described_class.create_admin_client(env: valid_env(secret_keys: {}))
-    end.to raise_error(Supabase::Server::EnvError) { |e|
-      expect(e.code).to eq(Supabase::Server::EnvError::MISSING_DEFAULT_SECRET_KEY)
+    end.to raise_error(Supabase::Rails::EnvError) { |e|
+      expect(e.code).to eq(Supabase::Rails::EnvError::MISSING_DEFAULT_SECRET_KEY)
     }
   end
 
@@ -73,8 +73,8 @@ RSpec.describe Supabase::Server::Core, ".create_admin_client" do
         auth: { key_name: "nonexistent" },
         env: valid_env
       )
-    end.to raise_error(Supabase::Server::EnvError) { |e|
-      expect(e.code).to eq(Supabase::Server::EnvError::MISSING_SECRET_KEY)
+    end.to raise_error(Supabase::Rails::EnvError) { |e|
+      expect(e.code).to eq(Supabase::Rails::EnvError::MISSING_SECRET_KEY)
     }
   end
 
@@ -106,8 +106,8 @@ RSpec.describe Supabase::Server::Core, ".create_admin_client" do
         auth: { key_name: nil },
         env: env
       )
-    end.to raise_error(Supabase::Server::EnvError) { |e|
-      expect(e.code).to eq(Supabase::Server::EnvError::MISSING_DEFAULT_SECRET_KEY)
+    end.to raise_error(Supabase::Rails::EnvError) { |e|
+      expect(e.code).to eq(Supabase::Rails::EnvError::MISSING_DEFAULT_SECRET_KEY)
     }
   end
 
@@ -117,8 +117,8 @@ RSpec.describe Supabase::Server::Core, ".create_admin_client" do
         auth: { key_name: nil },
         env: valid_env(secret_keys: {})
       )
-    end.to raise_error(Supabase::Server::EnvError) { |e|
-      expect(e.code).to eq(Supabase::Server::EnvError::MISSING_DEFAULT_SECRET_KEY)
+    end.to raise_error(Supabase::Rails::EnvError) { |e|
+      expect(e.code).to eq(Supabase::Rails::EnvError::MISSING_DEFAULT_SECRET_KEY)
     }
   end
 
@@ -175,7 +175,7 @@ RSpec.describe Supabase::Server::Core, ".create_admin_client" do
   end
 
   it "accepts an AuthResult struct as auth and ignores its token" do
-    auth_result = Supabase::Server::AuthResult.new(
+    auth_result = Supabase::Rails::AuthResult.new(
       auth_mode: :user,
       token: "result-token",
       user_claims: nil,
@@ -194,7 +194,7 @@ RSpec.describe Supabase::Server::Core, ".create_admin_client" do
         "web" => "sb_secret_web"
       }
     )
-    auth_result = Supabase::Server::AuthResult.new(
+    auth_result = Supabase::Rails::AuthResult.new(
       auth_mode: :secret,
       token: nil,
       user_claims: nil,

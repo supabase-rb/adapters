@@ -7,8 +7,8 @@ require "jwt"
 require "openssl"
 
 RSpec.describe "NFR-5 Observability contract" do
-  Credentials = Supabase::Server::Credentials unless defined?(Credentials)
-  SupabaseEnv = Supabase::Server::SupabaseEnv unless defined?(SupabaseEnv)
+  Credentials = Supabase::Rails::Credentials unless defined?(Credentials)
+  SupabaseEnv = Supabase::Rails::SupabaseEnv unless defined?(SupabaseEnv)
 
   def env_with(overrides = {})
     SupabaseEnv.new(
@@ -21,51 +21,51 @@ RSpec.describe "NFR-5 Observability contract" do
   end
 
   around(:each) do |example|
-    saved = Supabase::Server.logger
+    saved = Supabase::Rails.logger
     example.run
   ensure
-    Supabase::Server.logger = saved
+    Supabase::Rails.logger = saved
   end
 
   describe "1. Errors carry code for log filtering" do
     it "EnvError exposes #code returning a String" do
-      e = Supabase::Server::EnvError.missing_supabase_url
+      e = Supabase::Rails::EnvError.missing_supabase_url
       expect(e.code).to be_a(String)
-      expect(e.code).to eq(Supabase::Server::EnvError::MISSING_SUPABASE_URL)
+      expect(e.code).to eq(Supabase::Rails::EnvError::MISSING_SUPABASE_URL)
     end
 
     it "AuthError exposes #code returning a String" do
-      e = Supabase::Server::AuthError.invalid_credentials
+      e = Supabase::Rails::AuthError.invalid_credentials
       expect(e.code).to be_a(String)
-      expect(e.code).to eq(Supabase::Server::AuthError::INVALID_CREDENTIALS)
+      expect(e.code).to eq(Supabase::Rails::AuthError::INVALID_CREDENTIALS)
     end
 
     it "create_context failure exposes .error.code on the Result" do
-      result = Supabase::Server.create_context(
+      result = Supabase::Rails.create_context(
         { "Authorization" => "Bearer bogus" },
         auth: :user, env: env_with(jwks: { "keys" => [] })
       )
 
-      expect(result.error).to be_a(Supabase::Server::AuthError)
-      expect(result.error.code).to eq(Supabase::Server::AuthError::INVALID_CREDENTIALS)
+      expect(result.error).to be_a(Supabase::Rails::AuthError)
+      expect(result.error.code).to eq(Supabase::Rails::AuthError::INVALID_CREDENTIALS)
     end
   end
 
-  describe "2. Optional Supabase::Server.logger hook" do
+  describe "2. Optional Supabase::Rails.logger hook" do
     it "defaults to nil" do
-      Supabase::Server.logger = nil
-      expect(Supabase::Server.logger).to be_nil
+      Supabase::Rails.logger = nil
+      expect(Supabase::Rails.logger).to be_nil
     end
 
     it "can be set and read back via the module-level accessors" do
       io = StringIO.new
       my_logger = Logger.new(io)
-      Supabase::Server.logger = my_logger
-      expect(Supabase::Server.logger).to equal(my_logger)
+      Supabase::Rails.logger = my_logger
+      expect(Supabase::Rails.logger).to equal(my_logger)
     end
 
     it "does not log anything by default (nil logger is a no-op)" do
-      Supabase::Server.logger = nil
+      Supabase::Rails.logger = nil
 
       # If the default leaked any logging, it would write to STDOUT/STDERR.
       # Use a side-effect tap instead: a fake logger should *not* be called
@@ -77,8 +77,8 @@ RSpec.describe "NFR-5 Observability contract" do
       end.new
 
       # Sanity: the fake records when called.
-      Supabase::Server.logger = fake
-      Supabase::Server.create_context(
+      Supabase::Rails.logger = fake
+      Supabase::Rails.create_context(
         { "Authorization" => "Bearer junk" },
         auth: :user, env: env_with(jwks: { "keys" => [] })
       )
@@ -86,11 +86,11 @@ RSpec.describe "NFR-5 Observability contract" do
 
       # With logger reset to nil, the same call must not raise and must not
       # write anywhere observable.
-      Supabase::Server.logger = nil
+      Supabase::Rails.logger = nil
       taps.clear
 
       expect {
-        Supabase::Server.create_context(
+        Supabase::Rails.create_context(
           { "Authorization" => "Bearer junk" },
           auth: :user, env: env_with(jwks: { "keys" => [] })
         )
@@ -100,9 +100,9 @@ RSpec.describe "NFR-5 Observability contract" do
 
     it "logs create_context auth failures at :warn with the error code in the message" do
       io = StringIO.new
-      Supabase::Server.logger = Logger.new(io)
+      Supabase::Rails.logger = Logger.new(io)
 
-      result = Supabase::Server.create_context(
+      result = Supabase::Rails.create_context(
         { "Authorization" => "Bearer bogus" },
         auth: :user, env: env_with(jwks: { "keys" => [] })
       )
@@ -117,13 +117,13 @@ RSpec.describe "NFR-5 Observability contract" do
       # Trigger an EnvError during build_context_result by passing valid auth
       # but a SupabaseEnv whose publishable_keys are empty.
       taps = []
-      Supabase::Server.logger = Class.new do
+      Supabase::Rails.logger = Class.new do
         define_method(:warn) { |msg| taps << [:warn, msg] }
         define_method(:error) { |msg| taps << [:error, msg] }
       end.new
 
       env = env_with(publishable_keys: {})
-      result = Supabase::Server.create_context(
+      result = Supabase::Rails.create_context(
         { "apikey" => "sb_secret_xyz" }, # auth :secret resolves; then context client build hits empty publishable_keys
         auth: :secret, env: env
       )
@@ -139,10 +139,10 @@ RSpec.describe "NFR-5 Observability contract" do
         def warn(_msg); raise "logger died"; end
         def error(_msg); raise "logger died"; end
       end.new
-      Supabase::Server.logger = bad_logger
+      Supabase::Rails.logger = bad_logger
 
       expect {
-        Supabase::Server.create_context(
+        Supabase::Rails.create_context(
           { "Authorization" => "Bearer bogus" },
           auth: :user, env: env_with(jwks: { "keys" => [] })
         )
@@ -151,10 +151,10 @@ RSpec.describe "NFR-5 Observability contract" do
 
     it "skips loggers that do not respond to the requested level (duck-typed)" do
       stub_without_warn = Object.new # responds to neither :warn nor :error
-      Supabase::Server.logger = stub_without_warn
+      Supabase::Rails.logger = stub_without_warn
 
       expect {
-        Supabase::Server.create_context(
+        Supabase::Rails.create_context(
           { "Authorization" => "Bearer bogus" },
           auth: :user, env: env_with(jwks: { "keys" => [] })
         )
@@ -164,26 +164,26 @@ RSpec.describe "NFR-5 Observability contract" do
     it "is thread-safe under concurrent reads and writes" do
       writers = Array.new(8) do |i|
         Thread.new do
-          50.times { Supabase::Server.logger = Logger.new(StringIO.new).tap { |l| l.progname = "w#{i}" } }
+          50.times { Supabase::Rails.logger = Logger.new(StringIO.new).tap { |l| l.progname = "w#{i}" } }
         end
       end
       readers = Array.new(8) do
         Thread.new do
-          50.times { Supabase::Server.logger }
+          50.times { Supabase::Rails.logger }
         end
       end
 
       expect { (writers + readers).each(&:join) }.not_to raise_error
     end
 
-    it "exposes module-level state on Logging — NOT on Supabase::Server itself" do
+    it "exposes module-level state on Logging — NOT on Supabase::Rails itself" do
       # Server must keep zero module-level ivars (NFR-1 contract). Logger
       # storage lives in the Logging sub-module so that the request-path
       # invariant survives.
-      Supabase::Server.logger = Logger.new(StringIO.new)
-      expect(Supabase::Server.instance_variables).to eq([])
-      expect(Supabase::Server::Logging.instance_variables).to contain_exactly(:@mutex, :@logger)
-      expect(Supabase::Server::Logging.instance_variable_get(:@mutex)).to be_a(Mutex)
+      Supabase::Rails.logger = Logger.new(StringIO.new)
+      expect(Supabase::Rails.instance_variables).to eq([])
+      expect(Supabase::Rails::Logging.instance_variables).to contain_exactly(:@mutex, :@logger)
+      expect(Supabase::Rails::Logging.instance_variable_get(:@mutex)).to be_a(Mutex)
     end
   end
 
@@ -222,7 +222,7 @@ RSpec.describe "NFR-5 Observability contract" do
       offenders.each do |path, matches|
         expect(File.basename(path)).to eq("jwt.rb"),
           "Unexpected HTTP client reference in #{path}: #{matches.inspect}. " \
-          "Per NFR-5, only lib/supabase/server/jwt.rb may call out (JWKS fetch)."
+          "Per NFR-5, only lib/supabase/rails/jwt.rb may call out (JWKS fetch)."
         expect(matches).to eq(["Net::HTTP"]),
           "jwt.rb may only use Net::HTTP, got #{matches.inspect}"
       end
@@ -243,7 +243,7 @@ RSpec.describe "NFR-5 Observability contract" do
       # to the user's logger via duck-typed level call — it must not implicitly
       # touch the network.
       io = StringIO.new
-      Supabase::Server.logger = Logger.new(io)
+      Supabase::Rails.logger = Logger.new(io)
 
       # If anyone added a phone-home in Logging.log, this would fail with
       # something like Errno::ECONNREFUSED. The strict assertion is a smoke
@@ -251,7 +251,7 @@ RSpec.describe "NFR-5 Observability contract" do
       expect(Net::HTTP).not_to receive(:new) if defined?(Net::HTTP)
       expect(Net::HTTP).not_to receive(:start) if defined?(Net::HTTP)
 
-      Supabase::Server::Logging.log(:warn, "test message")
+      Supabase::Rails::Logging.log(:warn, "test message")
       expect(io.string).to include("test message")
     end
   end

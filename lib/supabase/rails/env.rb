@@ -6,7 +6,7 @@ require "uri"
 require_relative "errors"
 
 module Supabase
-  module Server
+  module Rails
     SupabaseEnv = Data.define(:url, :publishable_keys, :secret_keys, :jwks)
 
     module Env

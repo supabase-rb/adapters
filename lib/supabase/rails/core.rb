@@ -8,7 +8,7 @@ require_relative "errors"
 require_relative "jwt"
 
 module Supabase
-  module Server
+  module Rails
     Credentials = Struct.new(:token, :apikey, keyword_init: true)
 
     AuthResult = Struct.new(

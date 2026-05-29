@@ -2,11 +2,11 @@
 
 require "spec_helper"
 require "json"
-require "supabase/server/rails"
+require "supabase/rails"
 
-RSpec.describe Supabase::Server::Rails::Controller do
+RSpec.describe Supabase::Rails::Controller do
   def valid_env(overrides = {})
-    Supabase::Server::SupabaseEnv.new(
+    Supabase::Rails::SupabaseEnv.new(
       url: "https://test.supabase.co",
       publishable_keys: { "default" => "sb_publishable_xyz" },
       secret_keys: { "default" => "sb_secret_xyz" },
@@ -107,8 +107,8 @@ RSpec.describe Supabase::Server::Rails::Controller do
     end
 
     it "registers a rescue_from handler for AuthError" do
-      expect(controller_class.rescue_handlers).to include(Supabase::Server::AuthError)
-      expect(controller_class.rescue_handlers[Supabase::Server::AuthError])
+      expect(controller_class.rescue_handlers).to include(Supabase::Rails::AuthError)
+      expect(controller_class.rescue_handlers[Supabase::Rails::AuthError])
         .to eq(:render_supabase_auth_error)
     end
 
@@ -146,9 +146,9 @@ RSpec.describe Supabase::Server::Rails::Controller do
         controller.request = FakeRequest.new
 
         expect { controller.verify_supabase_auth }.to raise_error(
-          Supabase::Server::AuthError
+          Supabase::Rails::AuthError
         ) do |error|
-          expect(error.code).to eq(Supabase::Server::AuthError::INVALID_CREDENTIALS)
+          expect(error.code).to eq(Supabase::Rails::AuthError::INVALID_CREDENTIALS)
           expect(error.status).to eq(401)
         end
       end
@@ -163,7 +163,7 @@ RSpec.describe Supabase::Server::Rails::Controller do
 
         result = controller.verify_supabase_auth(auth: :publishable, env: valid_env)
 
-        expect(result).to be_a(Supabase::Server::SupabaseContext)
+        expect(result).to be_a(Supabase::Rails::SupabaseContext)
         expect(result.auth_mode).to eq(:publishable)
         expect(controller.request.env["supabase.context"]).to equal(result)
       end
@@ -173,8 +173,8 @@ RSpec.describe Supabase::Server::Rails::Controller do
 
         expect {
           controller.verify_supabase_auth(auth: :user, env: valid_env)
-        }.to raise_error(Supabase::Server::AuthError) do |error|
-          expect(error.code).to eq(Supabase::Server::AuthError::INVALID_CREDENTIALS)
+        }.to raise_error(Supabase::Rails::AuthError) do |error|
+          expect(error.code).to eq(Supabase::Rails::AuthError::INVALID_CREDENTIALS)
         end
       end
 
@@ -188,7 +188,7 @@ RSpec.describe Supabase::Server::Rails::Controller do
         )
 
         ctx = controller.request.env["supabase.context"]
-        expect(ctx).to be_a(Supabase::Server::SupabaseContext)
+        expect(ctx).to be_a(Supabase::Rails::SupabaseContext)
         expect(ctx.supabase).to be_a(::Supabase::Client)
       end
     end
@@ -197,7 +197,7 @@ RSpec.describe Supabase::Server::Rails::Controller do
   describe "rescue_from handler" do
     it "renders the auth error as JSON with the error status" do
       controller.request = FakeRequest.new
-      error = Supabase::Server::AuthError.invalid_credentials
+      error = Supabase::Rails::AuthError.invalid_credentials
 
       handled = controller_class.dispatch_rescue(controller, error)
 
@@ -213,14 +213,14 @@ RSpec.describe Supabase::Server::Rails::Controller do
 
     it "uses the error's own status (e.g. 500 for client creation failures)" do
       controller.request = FakeRequest.new
-      error = Supabase::Server::AuthError.create_supabase_client_error
+      error = Supabase::Rails::AuthError.create_supabase_client_error
 
       controller_class.dispatch_rescue(controller, error)
 
       payload = rendered.first
       expect(payload[:status]).to eq(500)
       expect(payload[:json][:code]).to eq(
-        Supabase::Server::AuthError::CREATE_SUPABASE_CLIENT_ERROR
+        Supabase::Rails::AuthError::CREATE_SUPABASE_CLIENT_ERROR
       )
     end
   end

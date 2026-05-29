@@ -2,11 +2,11 @@
 
 require "spec_helper"
 require "json"
-require "supabase/server/rails"
+require "supabase/rails"
 
-RSpec.describe Supabase::Server::Rails::Middleware do
+RSpec.describe Supabase::Rails::Middleware do
   def valid_env(overrides = {})
-    Supabase::Server::SupabaseEnv.new(
+    Supabase::Rails::SupabaseEnv.new(
       url: "https://test.supabase.co",
       publishable_keys: { "default" => "sb_publishable_xyz" },
       secret_keys: { "default" => "sb_secret_xyz" },
@@ -53,7 +53,7 @@ RSpec.describe Supabase::Server::Rails::Middleware do
       expect(body).to eq(["ok"])
       expect(captured_env.length).to eq(1)
       ctx = captured_env.first["supabase.context"]
-      expect(ctx).to be_a(Supabase::Server::SupabaseContext)
+      expect(ctx).to be_a(Supabase::Rails::SupabaseContext)
       expect(ctx.auth_mode).to eq(:none)
     end
 
@@ -73,7 +73,7 @@ RSpec.describe Supabase::Server::Rails::Middleware do
 
       expect(status).to eq(401)
       expect(JSON.parse(body.first)["code"]).to eq(
-        Supabase::Server::AuthError::INVALID_CREDENTIALS
+        Supabase::Rails::AuthError::INVALID_CREDENTIALS
       )
     end
   end
@@ -87,14 +87,14 @@ RSpec.describe Supabase::Server::Rails::Middleware do
       expect(status).to eq(401)
       expect(headers["Content-Type"]).to eq("application/json")
       parsed = JSON.parse(body.first)
-      expect(parsed["code"]).to eq(Supabase::Server::AuthError::INVALID_CREDENTIALS)
+      expect(parsed["code"]).to eq(Supabase::Rails::AuthError::INVALID_CREDENTIALS)
       expect(parsed["message"]).to be_a(String)
       expect(parsed["message"]).not_to be_empty
       expect(captured_env).to be_empty
     end
 
     it "uses the AuthError status (500) for client creation failures" do
-      bad_env = Supabase::Server::SupabaseEnv.new(
+      bad_env = Supabase::Rails::SupabaseEnv.new(
         url: "https://test.supabase.co",
         publishable_keys: {},
         secret_keys: {},

@@ -9,7 +9,7 @@ require_relative "env"
 require_relative "errors"
 
 module Supabase
-  module Server
+  module Rails
     module JWT
       ALGORITHMS = %w[RS256 ES256 HS256].freeze
       LEEWAY_SECONDS = 30

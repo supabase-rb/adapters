@@ -2,9 +2,9 @@
 
 require "spec_helper"
 
-RSpec.describe Supabase::Server::Core, ".create_context_client" do
+RSpec.describe Supabase::Rails::Core, ".create_context_client" do
   def valid_env(overrides = {})
-    Supabase::Server::SupabaseEnv.new(
+    Supabase::Rails::SupabaseEnv.new(
       url: "https://test.supabase.co",
       publishable_keys: { "default" => "sb_publishable_xyz" },
       secret_keys: { "default" => "sb_secret_xyz" },
@@ -41,8 +41,8 @@ RSpec.describe Supabase::Server::Core, ".create_context_client" do
         auth: { token: "test-token" },
         env: { publishable_key: "sb_publishable_xyz" }
       )
-    end.to raise_error(Supabase::Server::EnvError) { |e|
-      expect(e.code).to eq(Supabase::Server::EnvError::MISSING_SUPABASE_URL)
+    end.to raise_error(Supabase::Rails::EnvError) { |e|
+      expect(e.code).to eq(Supabase::Rails::EnvError::MISSING_SUPABASE_URL)
     }
   end
 
@@ -52,8 +52,8 @@ RSpec.describe Supabase::Server::Core, ".create_context_client" do
         auth: { token: "test-token" },
         env: valid_env(publishable_keys: {})
       )
-    end.to raise_error(Supabase::Server::EnvError) { |e|
-      expect(e.code).to eq(Supabase::Server::EnvError::MISSING_DEFAULT_PUBLISHABLE_KEY)
+    end.to raise_error(Supabase::Rails::EnvError) { |e|
+      expect(e.code).to eq(Supabase::Rails::EnvError::MISSING_DEFAULT_PUBLISHABLE_KEY)
     }
   end
 
@@ -80,8 +80,8 @@ RSpec.describe Supabase::Server::Core, ".create_context_client" do
         auth: { token: "test-token", key_name: "nonexistent" },
         env: valid_env
       )
-    end.to raise_error(Supabase::Server::EnvError) { |e|
-      expect(e.code).to eq(Supabase::Server::EnvError::MISSING_PUBLISHABLE_KEY)
+    end.to raise_error(Supabase::Rails::EnvError) { |e|
+      expect(e.code).to eq(Supabase::Rails::EnvError::MISSING_PUBLISHABLE_KEY)
     }
   end
 
@@ -113,8 +113,8 @@ RSpec.describe Supabase::Server::Core, ".create_context_client" do
         auth: { token: "test-token", key_name: nil },
         env: env
       )
-    end.to raise_error(Supabase::Server::EnvError) { |e|
-      expect(e.code).to eq(Supabase::Server::EnvError::MISSING_DEFAULT_PUBLISHABLE_KEY)
+    end.to raise_error(Supabase::Rails::EnvError) { |e|
+      expect(e.code).to eq(Supabase::Rails::EnvError::MISSING_DEFAULT_PUBLISHABLE_KEY)
     }
   end
 
@@ -124,8 +124,8 @@ RSpec.describe Supabase::Server::Core, ".create_context_client" do
         auth: { token: "test-token", key_name: nil },
         env: valid_env(publishable_keys: {})
       )
-    end.to raise_error(Supabase::Server::EnvError) { |e|
-      expect(e.code).to eq(Supabase::Server::EnvError::MISSING_DEFAULT_PUBLISHABLE_KEY)
+    end.to raise_error(Supabase::Rails::EnvError) { |e|
+      expect(e.code).to eq(Supabase::Rails::EnvError::MISSING_DEFAULT_PUBLISHABLE_KEY)
     }
   end
 
@@ -203,7 +203,7 @@ RSpec.describe Supabase::Server::Core, ".create_context_client" do
   end
 
   it "accepts an AuthResult struct as auth" do
-    auth_result = Supabase::Server::AuthResult.new(
+    auth_result = Supabase::Rails::AuthResult.new(
       auth_mode: :user,
       token: "result-token",
       user_claims: nil,
@@ -222,7 +222,7 @@ RSpec.describe Supabase::Server::Core, ".create_context_client" do
         "web" => "sb_publishable_web"
       }
     )
-    auth_result = Supabase::Server::AuthResult.new(
+    auth_result = Supabase::Rails::AuthResult.new(
       auth_mode: :publishable,
       token: nil,
       user_claims: nil,

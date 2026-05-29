@@ -6,8 +6,8 @@ require "openssl"
 require "uri"
 require "net/http"
 
-RSpec.describe Supabase::Server::JWT, ".verify" do
-  SupabaseEnv = Supabase::Server::SupabaseEnv unless defined?(SupabaseEnv)
+RSpec.describe Supabase::Rails::JWT, ".verify" do
+  SupabaseEnv = Supabase::Rails::SupabaseEnv unless defined?(SupabaseEnv)
 
   def env_with(jwks)
     SupabaseEnv.new(
@@ -56,8 +56,8 @@ RSpec.describe Supabase::Server::JWT, ".verify" do
     it "raises invalid credentials for a malformed token" do
       expect {
         described_class.verify("not.a.real.jwt", env: env_with(@jwks))
-      }.to raise_error(Supabase::Server::AuthError) do |err|
-        expect(err.code).to eq(Supabase::Server::AuthError::INVALID_CREDENTIALS)
+      }.to raise_error(Supabase::Rails::AuthError) do |err|
+        expect(err.code).to eq(Supabase::Rails::AuthError::INVALID_CREDENTIALS)
         expect(err.status).to eq(401)
       end
     end
@@ -69,7 +69,7 @@ RSpec.describe Supabase::Server::JWT, ".verify" do
       )
       expect {
         described_class.verify(expired, env: env_with(@jwks))
-      }.to raise_error(Supabase::Server::AuthError)
+      }.to raise_error(Supabase::Rails::AuthError)
     end
 
     it "raises invalid credentials when sub is missing" do
@@ -79,7 +79,7 @@ RSpec.describe Supabase::Server::JWT, ".verify" do
       )
       expect {
         described_class.verify(no_sub, env: env_with(@jwks))
-      }.to raise_error(Supabase::Server::AuthError)
+      }.to raise_error(Supabase::Rails::AuthError)
     end
 
     it "raises invalid credentials when token was signed by a different key" do
@@ -90,7 +90,7 @@ RSpec.describe Supabase::Server::JWT, ".verify" do
       )
       expect {
         described_class.verify(foreign, env: env_with(@jwks))
-      }.to raise_error(Supabase::Server::AuthError)
+      }.to raise_error(Supabase::Rails::AuthError)
     end
 
     it "applies 30s leeway when validating exp" do
@@ -105,15 +105,15 @@ RSpec.describe Supabase::Server::JWT, ".verify" do
     it "raises invalid credentials for nil token" do
       expect {
         described_class.verify(nil, env: env_with(@jwks))
-      }.to raise_error(Supabase::Server::AuthError) do |err|
-        expect(err.code).to eq(Supabase::Server::AuthError::INVALID_CREDENTIALS)
+      }.to raise_error(Supabase::Rails::AuthError) do |err|
+        expect(err.code).to eq(Supabase::Rails::AuthError::INVALID_CREDENTIALS)
       end
     end
 
     it "raises invalid credentials for empty token" do
       expect {
         described_class.verify("", env: env_with(@jwks))
-      }.to raise_error(Supabase::Server::AuthError)
+      }.to raise_error(Supabase::Rails::AuthError)
     end
   end
 
@@ -122,7 +122,7 @@ RSpec.describe Supabase::Server::JWT, ".verify" do
       token = make_token
       expect {
         described_class.verify(token, env: env_with(nil))
-      }.to raise_error(Supabase::Server::AuthError) do |err|
+      }.to raise_error(Supabase::Rails::AuthError) do |err|
         expect(err.status).to eq(500)
       end
     end
@@ -189,8 +189,8 @@ RSpec.describe Supabase::Server::JWT, ".verify" do
       token = make_token
       expect {
         described_class.verify(token, env: env_with(@jwks_url))
-      }.to raise_error(Supabase::Server::AuthError) do |err|
-        expect(err.code).to eq(Supabase::Server::AuthError::INVALID_CREDENTIALS)
+      }.to raise_error(Supabase::Rails::AuthError) do |err|
+        expect(err.code).to eq(Supabase::Rails::AuthError::INVALID_CREDENTIALS)
       end
     end
 
@@ -202,7 +202,7 @@ RSpec.describe Supabase::Server::JWT, ".verify" do
       token = make_token
       expect {
         described_class.verify(token, env: env_with(@jwks_url))
-      }.to raise_error(Supabase::Server::AuthError)
+      }.to raise_error(Supabase::Rails::AuthError)
     end
 
     it "applies a cooldown after a fetch failure (does not re-fetch immediately)" do
@@ -214,7 +214,7 @@ RSpec.describe Supabase::Server::JWT, ".verify" do
       2.times do
         expect {
           described_class.verify(token, env: env_with(@jwks_url))
-        }.to raise_error(Supabase::Server::AuthError)
+        }.to raise_error(Supabase::Rails::AuthError)
       end
 
       # First call hits the network; the second is short-circuited by the cooldown.
@@ -227,8 +227,8 @@ RSpec.describe Supabase::Server::JWT, ".verify" do
       token = make_token
       expect {
         described_class.verify(token, env: env_with(@jwks_url))
-      }.to raise_error(Supabase::Server::AuthError) do |err|
-        expect(err.code).to eq(Supabase::Server::AuthError::INVALID_CREDENTIALS)
+      }.to raise_error(Supabase::Rails::AuthError) do |err|
+        expect(err.code).to eq(Supabase::Rails::AuthError::INVALID_CREDENTIALS)
       end
     end
   end
@@ -238,7 +238,7 @@ RSpec.describe Supabase::Server::JWT, ".verify" do
       token = make_token
       expect {
         described_class.verify(token, env: env_with("not a jwks"))
-      }.to raise_error(Supabase::Server::AuthError)
+      }.to raise_error(Supabase::Rails::AuthError)
     end
   end
 end
