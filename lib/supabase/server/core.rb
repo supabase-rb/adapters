@@ -54,7 +54,20 @@ module Supabase
         ::Supabase::Client.new(
           supabase_url: resolved_env.url,
           supabase_key: anon_key,
-          options: build_context_client_options(supabase_options || {}, token)
+          options: build_client_options(supabase_options || {}, token)
+        )
+      end
+
+      def create_admin_client(auth: nil, env: nil, supabase_options: nil)
+        resolved_env = env.is_a?(SupabaseEnv) ? env : Env.resolve(env || {})
+        _token, key_name = extract_auth_fields(auth)
+
+        secret_key = resolve_secret_key(resolved_env.secret_keys, key_name)
+
+        ::Supabase::Client.new(
+          supabase_url: resolved_env.url,
+          supabase_key: secret_key,
+          options: build_client_options(supabase_options || {}, nil)
         )
       end
 
@@ -92,7 +105,21 @@ module Supabase
         anon_key
       end
 
-      def build_context_client_options(supabase_options, token)
+      def resolve_secret_key(keys, key_name)
+        name = key_name || "default"
+        secret_key = keys[name]
+        secret_key = keys.values.first if secret_key.nil? && key_name.nil?
+
+        if secret_key.nil? || secret_key.to_s.empty?
+          raise(
+            name == "default" ? EnvError.missing_default_secret_key : EnvError.missing_secret_key(name)
+          )
+        end
+
+        secret_key
+      end
+
+      def build_client_options(supabase_options, token)
         global = option_value(supabase_options, :global) || {}
         raw_headers = option_value(global, :headers) || {}
 
