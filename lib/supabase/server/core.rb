@@ -94,7 +94,6 @@ module Supabase
       def resolve_publishable_key(keys, key_name)
         name = key_name || "default"
         anon_key = keys[name]
-        anon_key = keys.values.first if anon_key.nil? && key_name.nil?
 
         if anon_key.nil? || anon_key.to_s.empty?
           raise(
@@ -108,7 +107,6 @@ module Supabase
       def resolve_secret_key(keys, key_name)
         name = key_name || "default"
         secret_key = keys[name]
-        secret_key = keys.values.first if secret_key.nil? && key_name.nil?
 
         if secret_key.nil? || secret_key.to_s.empty?
           raise(
@@ -243,6 +241,7 @@ module Supabase
       def try_user_mode(credentials, env)
         token = credentials.token
         return nil if token.nil? || token.to_s.empty?
+        # `sb_*` is Supabase's secret-key format, not a JWT — skip so it's matched by :secret mode instead.
         return nil if token.start_with?("sb_")
 
         claims = JWT.verify(token, env: env)
@@ -259,10 +258,18 @@ module Supabase
       def secure_compare(a, b)
         a_str = a.to_s
         b_str = b.to_s
+        # Length pre-check is required: fixed_length_secure_compare raises on mismatch.
         return false if a_str.bytesize != b_str.bytesize
 
         OpenSSL.fixed_length_secure_compare(a_str, b_str)
       end
+
+      private_class_method :extract_auth_fields, :resolve_publishable_key, :resolve_secret_key,
+                           :build_client_options, :option_value, :lookup_header,
+                           :extract_bearer_token, :stringify, :parse_auth_mode,
+                           :try_mode, :try_apikey_mode, :build_apikey_result,
+                           :try_user_mode
+      # `secure_compare` stays public: it's exercised directly by security_spec as a tested invariant.
     end
   end
 end

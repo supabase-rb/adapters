@@ -175,26 +175,24 @@ RSpec.describe Supabase::Server, ".create_context" do
       described_class.create_context({}, auth: :none, env: valid_env)
     end
 
-    it "supports Go-style array destructuring via #to_ary" do
-      ctx, error = result
-
-      expect(ctx).to be_a(Supabase::Server::SupabaseContext)
-      expect(error).to be_nil
+    it "exposes value and nil error on success" do
+      expect(result).to be_success
+      expect(result.value).to be_a(Supabase::Server::SupabaseContext)
+      expect(result.error).to be_nil
     end
 
-    it "returns [value, error] from #to_a" do
-      arr = result.to_a
+    it "exposes error and nil value on failure" do
+      failed = described_class.create_context({}, auth: :user, env: valid_env)
 
-      expect(arr.length).to eq(2)
-      expect(arr[0]).to be_a(Supabase::Server::SupabaseContext)
-      expect(arr[1]).to be_nil
+      expect(failed).to be_failure
+      expect(failed.value).to be_nil
+      expect(failed.error).to be_a(Supabase::Server::AuthError)
     end
 
-    it "exposes the error and nil value on failure destructuring" do
-      ctx, error = described_class.create_context({}, auth: :user, env: valid_env)
-
-      expect(ctx).to be_nil
-      expect(error).to be_a(Supabase::Server::AuthError)
+    it "does not support implicit array destructuring" do
+      # Result is not a tuple — callers must use .value / .error explicitly.
+      expect(result).not_to respond_to(:to_a)
+      expect(result).not_to respond_to(:to_ary)
     end
   end
 

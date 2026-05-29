@@ -7,8 +7,6 @@ module Supabase
   module Server
     module Rails
       class Middleware
-        CONTEXT_KEY = "supabase.context"
-
         def initialize(app, auth: :user, env: nil, supabase_options: nil, cors: nil)
           @app = app
           @auth = auth
@@ -22,7 +20,7 @@ module Supabase
             return [204, CORS.add_headers({}, @cors), []]
           end
 
-          return @app.call(env) if env[CONTEXT_KEY]
+          return @app.call(env) if env[Server::CONTEXT_KEY]
 
           result = Server.create_context(
             RackRequest.new(env),
@@ -33,7 +31,7 @@ module Supabase
 
           return error_response(result.error) if result.failure?
 
-          env[CONTEXT_KEY] = result.value
+          env[Server::CONTEXT_KEY] = result.value
           status, headers, body = @app.call(env)
           headers = CORS.add_headers(headers, @cors) if cors_enabled?
           [status, headers, body]

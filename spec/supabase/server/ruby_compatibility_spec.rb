@@ -11,23 +11,15 @@ RSpec.describe "Ruby compatibility (NFR-3)" do
     Dir[File.join(LIB_ROOT, "**", "*.rb")]
   end
 
-  describe "Ruby >= 3.0 (matches supabase-rb)" do
-    it "gemspec declares required_ruby_version >= 3.0" do
+  describe "Ruby >= 3.2 (Data.define floor)" do
+    it "gemspec declares required_ruby_version >= 3.2" do
       gemspec = Gem::Specification.load(GEMSPEC_PATH)
-      expect(gemspec.required_ruby_version.satisfied_by?(Gem::Version.new("3.0.0"))).to be(true)
-      expect(gemspec.required_ruby_version.satisfied_by?(Gem::Version.new("2.7.9"))).to be(false)
+      expect(gemspec.required_ruby_version.satisfied_by?(Gem::Version.new("3.2.0"))).to be(true)
+      expect(gemspec.required_ruby_version.satisfied_by?(Gem::Version.new("3.1.6"))).to be(false)
     end
 
-    it "runs on the current interpreter (>= 3.0)" do
-      expect(Gem::Version.new(RUBY_VERSION)).to be >= Gem::Version.new("3.0.0")
-    end
-
-    it "does not use the Ruby 3.2+ Data.define primitive (would break 3.0/3.1)" do
-      all_lib_files.each do |path|
-        source = File.read(path)
-        expect(source).not_to match(/\bData\.define\b/),
-          "#{path} uses Data.define which is Ruby 3.2+"
-      end
+    it "runs on the current interpreter (>= 3.2)" do
+      expect(Gem::Version.new(RUBY_VERSION)).to be >= Gem::Version.new("3.2.0")
     end
   end
 

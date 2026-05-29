@@ -219,7 +219,7 @@ Named key validation: `auth: "publishable:web_app"` or `auth: "secret:automation
 Every action with `verify_supabase_auth` receives a `SupabaseContext` via the `supabase_context` helper:
 
 ```ruby
-SupabaseContext = Struct.new(
+SupabaseContext = Data.define(
   :supabase,        # Supabase::Client — RLS-scoped (user or anon depending on auth)
   :supabase_admin,  # Supabase::Client — bypasses RLS
   :user_claims,     # UserClaims | nil — JWT-derived identity (id, role, email, ...)
@@ -332,13 +332,13 @@ Supabase::Server::Env.resolve(overrides)
 
 ### `Supabase::Server.create_context`
 
-Full context assembly from a Rack request — credential extraction, verification, and client creation in one call. Returns a `Result` object that destructures to `[value, error]`:
+Full context assembly from a Rack request — credential extraction, verification, and client creation in one call. Returns a `Result` exposing `.value` / `.error` and `success?` / `failure?`:
 
 ```ruby
-ctx, err = Supabase::Server.create_context(request, auth: :user)
-return render(json: { message: err.message }, status: err.status) if err
+result = Supabase::Server.create_context(request, auth: :user)
+return render(json: { message: result.error.message }, status: result.error.status) if result.failure?
 
-ctx.supabase.from(:games).select.execute
+result.value.supabase.from(:games).select.execute
 ```
 
 ### `Supabase::Server::Core.verify_credentials`
@@ -375,13 +375,14 @@ class SupabaseApp
 
     # Protected — verify the JWT, then create a user-scoped client
     if request.path == "/games"
-      ctx, err = Supabase::Server.create_context(request, auth: :user)
-      if err
+      result = Supabase::Server.create_context(request, auth: :user)
+      if result.failure?
+        err = result.error
         return [err.status, { "Content-Type" => "application/json" },
                 [JSON.generate(message: err.message, code: err.code)]]
       end
 
-      games = ctx.supabase.from(:favorite_games).select.execute
+      games = result.value.supabase.from(:favorite_games).select.execute
       return [200, { "Content-Type" => "application/json" }, [JSON.generate(games)]]
     end
 

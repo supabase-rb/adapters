@@ -20,10 +20,9 @@ RSpec.describe "NFR-4 Security contract" do
       url: "https://test.supabase.co",
       publishable_keys: { "default" => "sb_publishable_xyz" },
       secret_keys: { "default" => "sb_secret_xyz" },
-      jwks: nil
-    ).tap do |e|
-      overrides.each { |k, v| e[k] = v }
-    end
+      jwks: nil,
+      **overrides
+    )
   end
 
   before(:each) { Supabase::Server::JWT._reset_cache! }

@@ -182,12 +182,13 @@ RSpec.describe "Thread safety (NFR-1)" do
       results = run_concurrently(THREAD_COUNT) do |i|
         sub = "user-#{i}"
         request = { "Authorization" => "Bearer #{token_for(sub)}" }
-        ctx, err = Supabase::Server.create_context(request, auth: :user, env: env)
-        [sub, ctx, err]
+        result = Supabase::Server.create_context(request, auth: :user, env: env)
+        [sub, result]
       end
 
-      results.each do |sub, ctx, err|
-        expect(err).to be_nil
+      results.each do |sub, result|
+        expect(result).to be_success
+        ctx = result.value
         expect(ctx).to be_a(Supabase::Server::SupabaseContext)
         expect(ctx.user_claims.id).to eq(sub)
         expect(ctx.jwt_claims["sub"]).to eq(sub)

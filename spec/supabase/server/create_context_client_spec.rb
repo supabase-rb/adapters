@@ -100,19 +100,22 @@ RSpec.describe Supabase::Server::Core, ".create_context_client" do
     expect(client.supabase_key).to eq("sb_publishable_default")
   end
 
-  it "falls back to first available key when no default exists and key_name is nil" do
+  it "raises MISSING_DEFAULT_PUBLISHABLE_KEY when no \"default\" exists and key_name is nil" do
     env = valid_env(
       publishable_keys: {
         "web" => "sb_publishable_web",
         "mobile" => "sb_publishable_mobile"
       }
     )
-    client = described_class.create_context_client(
-      auth: { token: "test-token", key_name: nil },
-      env: env
-    )
 
-    expect(client.supabase_key).to eq("sb_publishable_web")
+    expect do
+      described_class.create_context_client(
+        auth: { token: "test-token", key_name: nil },
+        env: env
+      )
+    end.to raise_error(Supabase::Server::EnvError) { |e|
+      expect(e.code).to eq(Supabase::Server::EnvError::MISSING_DEFAULT_PUBLISHABLE_KEY)
+    }
   end
 
   it "raises EnvError when key_name is nil and publishable_keys is empty" do

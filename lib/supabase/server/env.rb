@@ -7,7 +7,7 @@ require_relative "errors"
 
 module Supabase
   module Server
-    SupabaseEnv = Struct.new(:url, :publishable_keys, :secret_keys, :jwks, keyword_init: true)
+    SupabaseEnv = Data.define(:url, :publishable_keys, :secret_keys, :jwks)
 
     module Env
       module_function

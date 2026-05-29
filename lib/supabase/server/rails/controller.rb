@@ -7,15 +7,13 @@ module Supabase
   module Server
     module Rails
       module Controller
-        CONTEXT_KEY = "supabase.context"
-
         def self.included(base)
           base.helper_method(:supabase_context) if base.respond_to?(:helper_method)
           base.rescue_from(AuthError, with: :render_supabase_auth_error) if base.respond_to?(:rescue_from)
         end
 
         def supabase_context
-          request.env[CONTEXT_KEY]
+          request.env[Server::CONTEXT_KEY]
         end
 
         def verify_supabase_auth(auth: nil, env: nil, supabase_options: nil)
@@ -34,7 +32,7 @@ module Supabase
 
           raise result.error if result.failure?
 
-          request.env[CONTEXT_KEY] = result.value
+          request.env[Server::CONTEXT_KEY] = result.value
         end
 
         private

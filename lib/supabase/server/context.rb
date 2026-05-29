@@ -7,11 +7,10 @@ require_relative "logging"
 
 module Supabase
   module Server
-    SupabaseContext = Struct.new(
+    SupabaseContext = Data.define(
       :supabase, :supabase_admin,
       :user_claims, :jwt_claims,
-      :auth_mode, :auth_key_name,
-      keyword_init: true
+      :auth_mode, :auth_key_name
     )
 
     class Result
@@ -28,14 +27,6 @@ module Supabase
 
       def failure?
         !success?
-      end
-
-      def to_a
-        [@value, @error]
-      end
-
-      def to_ary
-        to_a
       end
 
       def self.success(value)
@@ -91,9 +82,9 @@ module Supabase
       wrapped = AuthError.new(e.message, e.code, 500)
       Logging.log(:error, "[#{wrapped.code}] #{wrapped.message}")
       Result.failure(wrapped)
-    rescue StandardError
+    rescue ::Supabase::SupabaseException, ArgumentError => e
       wrapped = AuthError.create_supabase_client_error
-      Logging.log(:error, "[#{wrapped.code}] #{wrapped.message}")
+      Logging.log(:error, "[#{wrapped.code}] #{e.class}: #{e.message}")
       Result.failure(wrapped)
     end
 
@@ -117,7 +108,7 @@ module Supabase
         }
       end
 
-      request
+      {}
     end
 
     def self.header_value(headers, name)

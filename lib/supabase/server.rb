@@ -11,5 +11,6 @@ require_relative "server/cors"
 
 module Supabase
   module Server
+    CONTEXT_KEY = "supabase.context"
   end
 end

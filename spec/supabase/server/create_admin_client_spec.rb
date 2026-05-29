@@ -93,19 +93,22 @@ RSpec.describe Supabase::Server::Core, ".create_admin_client" do
     expect(client.supabase_key).to eq("sb_secret_default")
   end
 
-  it "falls back to first available key when no default exists and key_name is nil" do
+  it "raises MISSING_DEFAULT_SECRET_KEY when no \"default\" exists and key_name is nil" do
     env = valid_env(
       secret_keys: {
         "web" => "sb_secret_web",
         "mobile" => "sb_secret_mobile"
       }
     )
-    client = described_class.create_admin_client(
-      auth: { key_name: nil },
-      env: env
-    )
 
-    expect(client.supabase_key).to eq("sb_secret_web")
+    expect do
+      described_class.create_admin_client(
+        auth: { key_name: nil },
+        env: env
+      )
+    end.to raise_error(Supabase::Server::EnvError) { |e|
+      expect(e.code).to eq(Supabase::Server::EnvError::MISSING_DEFAULT_SECRET_KEY)
+    }
   end
 
   it "raises EnvError when key_name is nil and secret_keys is empty" do

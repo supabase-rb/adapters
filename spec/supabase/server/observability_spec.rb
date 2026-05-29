@@ -15,8 +15,9 @@ RSpec.describe "NFR-5 Observability contract" do
       url: "https://test.supabase.co",
       publishable_keys: { "default" => "sb_publishable_xyz" },
       secret_keys: { "default" => "sb_secret_xyz" },
-      jwks: nil
-    ).tap { |e| overrides.each { |k, v| e[k] = v } }
+      jwks: nil,
+      **overrides
+    )
   end
 
   around(:each) do |example|
@@ -40,13 +41,13 @@ RSpec.describe "NFR-5 Observability contract" do
     end
 
     it "create_context failure exposes .error.code on the Result" do
-      _ctx, err = Supabase::Server.create_context(
+      result = Supabase::Server.create_context(
         { "Authorization" => "Bearer bogus" },
         auth: :user, env: env_with(jwks: { "keys" => [] })
       )
 
-      expect(err).to be_a(Supabase::Server::AuthError)
-      expect(err.code).to eq(Supabase::Server::AuthError::INVALID_CREDENTIALS)
+      expect(result.error).to be_a(Supabase::Server::AuthError)
+      expect(result.error.code).to eq(Supabase::Server::AuthError::INVALID_CREDENTIALS)
     end
   end
 
@@ -101,12 +102,12 @@ RSpec.describe "NFR-5 Observability contract" do
       io = StringIO.new
       Supabase::Server.logger = Logger.new(io)
 
-      _ctx, err = Supabase::Server.create_context(
+      result = Supabase::Server.create_context(
         { "Authorization" => "Bearer bogus" },
         auth: :user, env: env_with(jwks: { "keys" => [] })
       )
 
-      expect(err.code).to eq("INVALID_CREDENTIALS")
+      expect(result.error.code).to eq("INVALID_CREDENTIALS")
       output = io.string
       expect(output).to include("WARN")
       expect(output).to include("INVALID_CREDENTIALS")
@@ -122,15 +123,15 @@ RSpec.describe "NFR-5 Observability contract" do
       end.new
 
       env = env_with(publishable_keys: {})
-      _ctx, err = Supabase::Server.create_context(
+      result = Supabase::Server.create_context(
         { "apikey" => "sb_secret_xyz" }, # auth :secret resolves; then context client build hits empty publishable_keys
         auth: :secret, env: env
       )
 
-      expect(err.status).to eq(500)
+      expect(result.error.status).to eq(500)
       expect(taps.map(&:first)).to include(:error)
       error_msg = taps.find { |(level, _)| level == :error }.last
-      expect(error_msg).to include(err.code)
+      expect(error_msg).to include(result.error.code)
     end
 
     it "does not crash when the logger itself raises (defensive)" do
