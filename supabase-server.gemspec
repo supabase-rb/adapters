@@ -21,5 +21,7 @@ Gem::Specification.new do |spec|
   spec.files = Dir["lib/**/*.rb"]
   spec.require_paths = ["lib"]
 
+  spec.add_dependency "jwt", "~> 2.0"
+
   spec.add_development_dependency "rspec", "~> 3.13"
 end
