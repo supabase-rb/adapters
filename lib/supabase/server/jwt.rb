@@ -5,6 +5,7 @@ require "jwt"
 require "net/http"
 require "uri"
 
+require_relative "env"
 require_relative "errors"
 
 module Supabase
@@ -74,13 +75,16 @@ module Supabase
 
         def resolve_jwks(source)
           return source if source.is_a?(Hash)
-          return fetch_with_cache(source) if jwks_url?(source)
+
+          if source.is_a?(URI::HTTPS)
+            return fetch_with_cache(source)
+          end
+
+          if source.is_a?(URI::HTTP) && Env.loopback_host?(source.host)
+            return fetch_with_cache(source)
+          end
 
           raise AuthError.invalid_credentials
-        end
-
-        def jwks_url?(source)
-          source.is_a?(URI::HTTP) || source.is_a?(URI::HTTPS)
         end
 
         def fetch_with_cache(url)
