@@ -6,6 +6,7 @@ require_relative "server/env"
 require_relative "server/jwt"
 require_relative "server/core"
 require_relative "server/context"
+require_relative "server/cors"
 
 module Supabase
   module Server
